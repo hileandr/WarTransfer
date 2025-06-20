@@ -1,0 +1,53 @@
+﻿<Window x:Class="WarTransferUI.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:WarTransferUI"
+        mc:Ignorable="d"
+        WindowStartupLocation="CenterOwner"
+        WindowStyle="ToolWindow"
+        Title="Settings" Width="400"
+        ResizeMode="NoResize" Height="300">
+    <DockPanel Margin="10,10,10,10">
+        <CheckBox Name="EnableUISounds" Content="WarTransfer Sound Effects" ToolTip ="Enables or disables WarTransfer's vocal chords." DockPanel.Dock="Top"/>
+        
+        <Separator DockPanel.Dock="Top" Background="#FFDADADA" Margin="0,5,0,5"></Separator>
+        
+        <CheckBox Name="TransferRegions" Content="Transfer Regions" ToolTip ="By default, WarTransfer won't transfer any regions. Check this to change this behavior. Please note that any regions in the destination maps will be overwritten." DockPanel.Dock="Top"/>
+        <CheckBox Name="TransferCameras" Content="Transfer Cameras" ToolTip ="By default, WarTransfer won't transfer any cameras. Check this to change this behavior. Please note that any cameras in the destination maps will be overwritten." DockPanel.Dock="Top"/>
+
+        <Separator DockPanel.Dock="Top" Background="#FFDADADA" Margin="0,5,0,5"></Separator>
+        
+        <CheckBox Name="EnableVersioning" Content="Enable Versioning" ToolTip ="When enabled, WarTransfer will try to automatically update the maps' version numbers." DockPanel.Dock="Top"/>
+        <DockPanel LastChildFill="True" Margin="0,5,0,0" DockPanel.Dock="Top" ToolTip="Regular expression pattern used to detect version numbers.">
+            <Label Padding="0,0,0,0" Margin="0,0,10,0">Version Number Regex</Label>
+            <TextBox Name="VersionNumberRegex" IsEnabled="false" FontSize="13px"/>
+        </DockPanel>
+        <Border Background="#FFECECEC" Margin="0,5,0,0" MinWidth="1" DockPanel.Dock="Top" BorderBrush="#FFCCCCCC" BorderThickness="1">
+            <StackPanel>
+                <Label Margin="0,0,0,5" Padding="0" HorizontalAlignment="Center" FontWeight="Bold" Foreground="Gray">Versioning Preview</Label>
+                <Grid Margin="5,0,5,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="2*"></ColumnDefinition>
+                        <ColumnDefinition></ColumnDefinition>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition></RowDefinition>
+                        <RowDefinition></RowDefinition>
+                        <RowDefinition></RowDefinition>
+                    </Grid.RowDefinitions>
+                    <Label Grid.Column="0" Grid.Row="0" Padding="0" Margin="0,0,5,0">Map Name</Label>
+                    <Label Grid.Column="1" Grid.Row="0" Padding="0">New Version</Label>
+                    <TextBox Name="RegexPreviewInput" IsEnabled="False" Text="MySourceMapv1.1.0.w3x" Grid.Column="0" Grid.Row="1"  FontSize="13px" Margin="0,0,5,0" />
+                    <TextBox Name="VersionNumberInput" IsEnabled="False" Text="2.0.3" Grid.Column="1" Grid.Row="1"  FontSize="13px" />
+                    <TextBox Name="RegexPreviewOutput" IsEnabled="False" IsReadOnly="True" FontSize="13px" Grid.Row="2" Grid.ColumnSpan="2" Margin="0,5,0,5"/>
+                </Grid>
+            </StackPanel>
+        </Border>
+        <StackPanel Orientation="Horizontal" FlowDirection="RightToLeft" Margin="0,5,0,0" DockPanel.Dock="Top" VerticalAlignment="Bottom">
+            <Button Name="Save" Content="Save" Margin="0,0,5,0" Width="70"></Button>
+            <Button Name="Cancel" Content="Cancel" Width="70"></Button>
+        </StackPanel>
+    </DockPanel>
+</Window>

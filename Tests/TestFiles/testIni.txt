@@ -1,0 +1,9 @@
+// Some comment
+GlobalEntry=1
+[Section 1]
+E1=2
+E2=HelloThere
+[Section 2]
+E4=something
+E5=somethingElse
+// comment
