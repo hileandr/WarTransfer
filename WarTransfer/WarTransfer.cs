@@ -62,10 +62,7 @@ namespace WarTransfer
             this.m_outDirectory = args.OutputDirectory;
             this.m_args = args;
 
-            if (!MPQUtility.VerifyMPQEditor())
-            {
-                e.Log(LogType.Error, "Ladik's MPQ editor not found. This is a required dependency.");
-            }
+            VerifyRequirements(e);
 
             if (!e.KillProcess)
             {
@@ -151,6 +148,23 @@ namespace WarTransfer
             if (!e.KillProcess)
             {
                 e.Log(LogType.UserInfo, $"Work Complete!");
+            }
+        }
+
+        private void VerifyRequirements(IWorkflowHandler e)
+        {
+            if (!MPQUtility.VerifyMPQEditor())
+            {
+                e.Log(LogType.Error, "Ladik's MPQ editor not found. This is a required dependency.");
+                e.KillProcess = true;
+            }
+
+            if (!IOUtility.TestFileAccess(m_args.SourceMap))
+            {
+                string fileName = Path.GetFileName(m_args.SourceMap);
+
+                e.Log(LogType.Error, $"The source file {fileName} is inaccessible. It is likely being used by another process, such as the Warcraft III World Editor.");
+                e.KillProcess = true;
             }
         }
 

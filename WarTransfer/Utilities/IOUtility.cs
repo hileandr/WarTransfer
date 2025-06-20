@@ -226,5 +226,22 @@ namespace WarTransfer
 
             return exitCode;
         }
+
+        internal static bool TestFileAccess(string path)
+        {
+            bool isReadable = false;
+            try
+            {
+                using (FileStream fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.None))
+                {
+                    isReadable = true;
+                }
+            }
+            catch
+            {
+            }
+
+            return isReadable;
+        }
     }
 }
