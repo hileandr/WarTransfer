@@ -11,6 +11,7 @@ namespace WarTransfer
     {
         public const string GLOBALS_ID = "globals";
         public const string FUNCTION_ID = "function";
+        public const string FUNCTION_INTERFACE_ID = "function interface";
         public const string FUNC_USED_PATTERN = "(?:^\\ *call\\ *{0})|(?:[\\(,]\\ *function\\ *{0}\\ *\\))";
 
         public static JFile ReadFile(IWorkflowHandler e, string filePath)
@@ -53,6 +54,7 @@ namespace WarTransfer
                 case NodeType.Comment: return new JFileCommentNode(document, line);
                 case NodeType.Globals: return new JFileGlobalsNode(document, line);
                 case NodeType.Function: return new JFileFunctionNode(document, GetFunctionName(line), line);
+                case NodeType.FunctionInterface:
                 default: return new JFileTextNode(document, line);
             }
         }
@@ -67,6 +69,10 @@ namespace WarTransfer
             else if (trimmed.StartsWith(GLOBALS_ID))
             {
                 return NodeType.Globals;
+            }
+            else if (trimmed.StartsWith(FUNCTION_INTERFACE_ID))
+            {
+                return NodeType.FunctionInterface;
             }
             else if (trimmed.StartsWith(FUNCTION_ID))
             {

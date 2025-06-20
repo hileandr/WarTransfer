@@ -10,7 +10,8 @@ namespace WarTransfer.FileTypes
         Text = 1,
         Comment = 2,
         Globals = 3,
-        Function = 4
+        Function = 4,
+        FunctionInterface = 5
     }
 
     [Flags]
