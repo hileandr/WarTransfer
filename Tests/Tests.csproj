@@ -50,6 +50,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="IniFileTests.cs" />
+    <Compile Include="VersioningTests.cs" />
     <Compile Include="TriggerFileTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
@@ -58,11 +59,17 @@
     <None Include="TestFiles\test.wtg" />
     <None Include="TestFiles\testX.wct" />
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <WCFMetadata Include="Connected Services\" />
+  </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\WarFiles\WarFiles.csproj">
       <Project>{bea3a738-9cdb-4bde-b234-1387ebff524a}</Project>
       <Name>WarFiles</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\WarTransfer\WarTransfer.csproj">
+      <Project>{c763e981-41d0-4f40-9a60-11284a5c54cb}</Project>
+      <Name>WarTransfer</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>

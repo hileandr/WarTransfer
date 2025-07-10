@@ -35,7 +35,13 @@ namespace WarTransfer
 
         internal static string ParseVersion(string mapName, bool isFileName)
         {
+            return ParseVersion(mapName, isFileName, out _);
+        }
+
+        internal static string ParseVersion(string mapName, bool isFileName, out Match location)
+        {
             string version = "";
+            location = null;
             if (s_versionRegex != null)
             {
                 if (isFileName)
@@ -44,7 +50,7 @@ namespace WarTransfer
 
                     if (Path.HasExtension(mapName))
                     {
-                        mapName = Path.ChangeExtension(mapName, null);
+                        mapName = Path.GetFileNameWithoutExtension(mapName);
                     }
                 }
 
@@ -53,6 +59,7 @@ namespace WarTransfer
                     if (match.Success && match.Length > 0 && match.Groups.Count > 0)
                     {
                         version = match.Groups[match.Groups.Count - 1].Value;
+                        location = match;
                         break;
                     }
                 }
@@ -65,16 +72,18 @@ namespace WarTransfer
         {
             if (!string.IsNullOrEmpty(s_version))
             {
-                string fileName = Path.GetFileName(filePath);
+                string extension = Path.GetExtension(filePath);
+                string fileNameNoExtension = Path.GetFileNameWithoutExtension(filePath);
                 string directoryName = Path.GetDirectoryName(filePath);
 
-                string version = ParseVersion(fileName, true);
+                string version = ParseVersion(filePath, true, out Match match);
                 if (!string.IsNullOrWhiteSpace(version) && !version.Equals(s_version))
                 {
-                    string extension = Path.GetExtension(filePath);
-                    string fileNoExtension = Path.ChangeExtension(fileName, null);
+                    string updatedFileName = fileNameNoExtension.Substring(0, match.Index) +
+                        s_version +
+                        fileNameNoExtension.Substring(match.Index + match.Length) +
+                        extension;
 
-                    string updatedFileName = fileNoExtension.Substring(0, fileNoExtension.Length - version.Length) + s_version + extension;
                     return Path.Combine(directoryName, updatedFileName);
                 }
             }
