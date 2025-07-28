@@ -6,11 +6,12 @@ using System.Linq;
 using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
+using System.Runtime.Remoting.Messaging;
 
 namespace WarTransfer.FileTypes
 {
     [Flags]
-    public enum W3iFlags : uint
+    public enum W3iFlags : int
     {
         HideMinimapInPreviewScreens = 1 << 0,
         ModifyAllyPriorities = 1 << 1,
@@ -27,18 +28,25 @@ namespace WarTransfer.FileTypes
         ShowWaterWavesOnRollingShores = 1 << 12,
         Unknown2 = 1 << 13,
         Unknown3 = 1 << 14,
-        Unknown4 = 1 << 15
+        Unknown4 = 1 << 15,
+        Unknown5 = 1 << 16,
+        Unknown6 = 1 << 17,
+        Unknown7 = 1 << 18,
+        DisableDenyIcon = 1 << 19,
+        ForceDefaultCameraZoom = 1 << 20,
+        ForceMaxCameraZoom = 1 << 21,
+        ForceMinCameraZoom = 1 << 22,
     }
 
     public class W3iFile
     {
-        public uint FormatVersion { get; set; }
-        public uint MapVersion { get; set; }
-        public uint EditorVersion { get; set; }
-        public uint GameVersionMajor { get; set; }
-        public uint GameVersionMinor { get; set; }
-        public uint GameVersionPatch { get; set; }
-        public uint GameVersionBuild { get; set; }
+        public int FormatVersion { get; set; }
+        public int MapVersion { get; set; }
+        public int EditorVersion { get; set; }
+        public int GameVersionMajor { get; set; }
+        public int GameVersionMinor { get; set; }
+        public int GameVersionPatch { get; set; }
+        public int GameVersionBuild { get; set; }
         public string Name { get; set; }
         public string Author { get; set; }
         public string Description { get; set; }
@@ -48,22 +56,22 @@ namespace WarTransfer.FileTypes
         public float[] CameraLeftTop { get; set; }
         public float[] CameraRightBottom { get; set; }
         public int[] CameraCompliments { get; set; }
-        public uint PlayableWidth { get; set; }
-        public uint PlayableHeight { get; set; }
+        public int PlayableWidth { get; set; }
+        public int PlayableHeight { get; set; }
         public W3iFlags Flags { get; set; }
         public char TileSet { get; set; }
-        public uint LoadingScreenId { get; set; }
+        public int LoadingScreenId { get; set; }
         public string LoadingScreenModel { get; set; }
         public string LoadingScreenText { get; set; }
         public string LoadingScreenTitle { get; set; }
         public string LoadingScreenSubtitle { get; set; }
-        public uint GameDataSet { get; set; }
-        public uint MapLoadingScreenId { get; set; }
+        public int GameDataSet { get; set; }
+        public int MapLoadingScreenId { get; set; }
         public string PrologueScreenModel { get; set; }
         public string PrologueText { get; set; }
         public string PrologueTitle { get; set; }
         public string PrologueSubtitle { get; set; }
-        public uint FogStyle { get; set; }
+        public int FogStyle { get; set; }
         public float FogStartZHeight { get; set; }
         public float FogEndZHeight { get; set; }
         public float FogDensity { get; set; }
@@ -78,20 +86,23 @@ namespace WarTransfer.FileTypes
         public byte WaterTintGreen { get; set; }
         public byte WaterTintBlue { get; set; }
         public byte WaterTintAlpha { get; set; }
-        public uint ScriptTypeId { get; set; }
-        public uint SupportedModes { get; set; }
-        public uint GameDataVersion { get; set; }
-        public uint PlayerCount { get; set; }
+        public int ScriptTypeId { get; set; }
+        public int SupportedModes { get; set; }
+        public int GameDataVersion { get; set; }
+        public int ForceDefaultCameraZoom { get; set; }
+        public int ForceMinCameraZoom { get; set; }
+        public int ForceMaxCameraZoom { get; set; }
+        public int PlayerCount { get; set; }
         public Player[] Players { get; set; }
-        public uint ForcesCount { get; set; }
+        public int ForcesCount { get; set; }
         public Force[] Forces { get; set; }
-        public uint AvailableUpgradesCount { get; set; }
+        public int AvailableUpgradesCount { get; set; }
         public AvailableUpgrade[] AvailableUpgrades { get; set; }
-        public uint AvailableTechCount { get; set; }
+        public int AvailableTechCount { get; set; }
         public AvailableTech[] AvailableTechs { get; set; }
-        public uint RandomUnitsTableCount { get; set; }
+        public int RandomUnitsTableCount { get; set; }
         public RandomUnitsTable[] RandomUnitsTables { get; set; }
-        public uint RandomItemsTableCount { get; set; }
+        public int RandomItemsTableCount { get; set; }
         public RandomItemsTable[] RandomItemsTables { get; set; }
 
         public static W3iFile Read(BinaryReader reader)
@@ -126,7 +137,7 @@ namespace WarTransfer.FileTypes
             SerializeHelper.WriteArray(writer, this.CameraCompliments);
             writer.Write(this.PlayableWidth);
             writer.Write(this.PlayableHeight);
-            writer.Write((uint)this.Flags);
+            writer.Write((int)this.Flags);
             writer.Write(this.TileSet);
             writer.Write(this.LoadingScreenId);
 
@@ -187,6 +198,13 @@ namespace WarTransfer.FileTypes
                 }
             }
 
+            if (this.FormatVersion >= 33)
+            {
+                writer.Write(this.ForceDefaultCameraZoom);
+                writer.Write(this.ForceMaxCameraZoom);
+                writer.Write(this.ForceMaxCameraZoom);
+            }
+
             writer.Write(this.PlayerCount);
             for (int i = 0; i < this.PlayerCount; i++)
             {
@@ -229,16 +247,16 @@ namespace WarTransfer.FileTypes
 
         public void Deserialize(BinaryReader reader)
         {
-            this.FormatVersion = reader.ReadUInt32();
-            this.MapVersion = reader.ReadUInt32();
-            this.EditorVersion = reader.ReadUInt32();
+            this.FormatVersion = reader.ReadInt32();
+            this.MapVersion = reader.ReadInt32();
+            this.EditorVersion = reader.ReadInt32();
 
             if (this.FormatVersion >= 28)
             {
-                this.GameVersionMajor = reader.ReadUInt32();
-                this.GameVersionMinor = reader.ReadUInt32();
-                this.GameVersionPatch = reader.ReadUInt32();
-                this.GameVersionBuild = reader.ReadUInt32();
+                this.GameVersionMajor = reader.ReadInt32();
+                this.GameVersionMinor = reader.ReadInt32();
+                this.GameVersionPatch = reader.ReadInt32();
+                this.GameVersionBuild = reader.ReadInt32();
             }
 
             this.Name = SerializeHelper.ReadString(reader);
@@ -250,11 +268,11 @@ namespace WarTransfer.FileTypes
             this.CameraLeftTop = SerializeHelper.ReadFloatArr(reader, 2);
             this.CameraRightBottom = SerializeHelper.ReadFloatArr(reader, 2);
             this.CameraCompliments = SerializeHelper.ReadIntArr(reader, 4);
-            this.PlayableWidth = reader.ReadUInt32();
-            this.PlayableHeight = reader.ReadUInt32();
-            this.Flags = (W3iFlags)reader.ReadUInt32();
+            this.PlayableWidth = reader.ReadInt32();
+            this.PlayableHeight = reader.ReadInt32();
+            this.Flags = (W3iFlags)reader.ReadInt32();
             this.TileSet = reader.ReadChar();
-            this.LoadingScreenId = reader.ReadUInt32();
+            this.LoadingScreenId = reader.ReadInt32();
 
             if (this.FormatVersion >= 25)
             {
@@ -267,12 +285,12 @@ namespace WarTransfer.FileTypes
 
             if (this.FormatVersion >= 25)
             {
-                this.GameDataSet = reader.ReadUInt32();
+                this.GameDataSet = reader.ReadInt32();
             }
 
             if (this.FormatVersion <= 18)
             {
-                this.MapLoadingScreenId = reader.ReadUInt32();
+                this.MapLoadingScreenId = reader.ReadInt32();
             }
 
             if (this.FormatVersion >= 25)
@@ -286,7 +304,7 @@ namespace WarTransfer.FileTypes
 
             if (this.FormatVersion >= 25)
             {
-                this.FogStyle = reader.ReadUInt32();
+                this.FogStyle = reader.ReadInt32();
                 this.FogStartZHeight = reader.ReadSingle();
                 this.FogEndZHeight = reader.ReadSingle();
                 this.FogDensity = reader.ReadSingle();
@@ -304,16 +322,23 @@ namespace WarTransfer.FileTypes
 
                 if (this.FormatVersion >= 28)
                 {
-                    this.ScriptTypeId = reader.ReadUInt32();
+                    this.ScriptTypeId = reader.ReadInt32();
                     if (this.FormatVersion >= 31)
                     {
-                        this.SupportedModes = reader.ReadUInt32();
-                        this.GameDataVersion = reader.ReadUInt32();
+                        this.SupportedModes = reader.ReadInt32();
+                        this.GameDataVersion = reader.ReadInt32();
                     }
                 }
             }
 
-            this.PlayerCount = reader.ReadUInt32();
+            if (this.FormatVersion >= 33)
+            {
+                this.ForceDefaultCameraZoom = reader.ReadInt32();
+                this.ForceMaxCameraZoom = reader.ReadInt32();
+                this.ForceMaxCameraZoom = reader.ReadInt32();
+            }
+
+            this.PlayerCount = reader.ReadInt32();
             this.Players = new Player[this.PlayerCount];
             for (int i = 0; i < this.PlayerCount; i++)
             {
@@ -321,7 +346,7 @@ namespace WarTransfer.FileTypes
                 this.Players[i].Deserialize(reader, this.FormatVersion);
             }
 
-            this.ForcesCount = reader.ReadUInt32();
+            this.ForcesCount = reader.ReadInt32();
             this.Forces = new Force[this.ForcesCount];
             for (int i = 0; i < this.ForcesCount; i++)
             {
@@ -329,7 +354,7 @@ namespace WarTransfer.FileTypes
                 this.Forces[i].Deserialize(reader, this.FormatVersion);
             }
 
-            this.AvailableUpgradesCount = reader.ReadUInt32();
+            this.AvailableUpgradesCount = reader.ReadInt32();
             this.AvailableUpgrades = new AvailableUpgrade[this.AvailableUpgradesCount];
             for (int i = 0; i < this.AvailableUpgradesCount; i++)
             {
@@ -337,7 +362,7 @@ namespace WarTransfer.FileTypes
                 this.AvailableUpgrades[i].Deserialize(reader, this.FormatVersion);
             }
 
-            this.AvailableTechCount = reader.ReadUInt32();
+            this.AvailableTechCount = reader.ReadInt32();
             this.AvailableTechs = new AvailableTech[this.AvailableTechCount];
             for (int i = 0; i < this.AvailableTechCount; i++)
             {
@@ -345,7 +370,7 @@ namespace WarTransfer.FileTypes
                 this.AvailableTechs[i].Deserialize(reader, this.FormatVersion);
             }
 
-            this.RandomUnitsTableCount = reader.ReadUInt32();
+            this.RandomUnitsTableCount = reader.ReadInt32();
             this.RandomUnitsTables = new RandomUnitsTable[this.RandomUnitsTableCount];
             for (int i = 0; i < this.RandomUnitsTableCount; i++)
             {
@@ -355,7 +380,7 @@ namespace WarTransfer.FileTypes
 
             if (this.FormatVersion >= 25)
             {
-                this.RandomItemsTableCount = reader.ReadUInt32();
+                this.RandomItemsTableCount = reader.ReadInt32();
                 this.RandomItemsTables = new RandomItemsTable[this.RandomItemsTableCount];
                 for (int i = 0; i < this.RandomItemsTableCount; i++)
                 {
@@ -368,19 +393,19 @@ namespace WarTransfer.FileTypes
 
     public class Player
     {
-        public uint InternalNumber { get; set; }
-        public uint TypeId { get; set; }
-        public uint RaceId { get; set; }
-        public uint FixedStartLocation { get; set; }
+        public int InternalNumber { get; set; }
+        public int TypeId { get; set; }
+        public int RaceId { get; set; }
+        public int FixedStartLocation { get; set; }
         public string Name { get; set; }
         public float StartingPosX { get; set; }
         public float StartingPosY { get; set; }
-        public uint AllyLowPrioritiesFlag { get; set; }
-        public uint AllyHighPrioritiesFlag { get; set; }
-        public uint EnemyLowPrioritiesFlag { get; set; }
-        public uint EnemyHighPrioritiesFlag { get; set; }
+        public int AllyLowPrioritiesFlag { get; set; }
+        public int AllyHighPrioritiesFlag { get; set; }
+        public int EnemyLowPrioritiesFlag { get; set; }
+        public int EnemyHighPrioritiesFlag { get; set; }
 
-        public void Serialize(BinaryWriter writer, uint formatVersion)
+        public void Serialize(BinaryWriter writer, int formatVersion)
         {
             writer.Write(this.InternalNumber);
             writer.Write(this.TypeId);
@@ -399,55 +424,55 @@ namespace WarTransfer.FileTypes
             }
         }
 
-        public void Deserialize(BinaryReader reader, uint formatVersion)
+        public void Deserialize(BinaryReader reader, int formatVersion)
         {
-            this.InternalNumber = reader.ReadUInt32();
-            this.TypeId = reader.ReadUInt32();
-            this.RaceId = reader.ReadUInt32();
-            this.FixedStartLocation = reader.ReadUInt32();
+            this.InternalNumber = reader.ReadInt32();
+            this.TypeId = reader.ReadInt32();
+            this.RaceId = reader.ReadInt32();
+            this.FixedStartLocation = reader.ReadInt32();
             this.Name = SerializeHelper.ReadString(reader);
             this.StartingPosX = reader.ReadSingle();
             this.StartingPosY = reader.ReadSingle();
-            this.AllyLowPrioritiesFlag = reader.ReadUInt32();
-            this.AllyHighPrioritiesFlag = reader.ReadUInt32();
+            this.AllyLowPrioritiesFlag = reader.ReadInt32();
+            this.AllyHighPrioritiesFlag = reader.ReadInt32();
 
             if (formatVersion >= 31)
             {
-                this.EnemyLowPrioritiesFlag = reader.ReadUInt32();
-                this.EnemyHighPrioritiesFlag = reader.ReadUInt32();
+                this.EnemyLowPrioritiesFlag = reader.ReadInt32();
+                this.EnemyHighPrioritiesFlag = reader.ReadInt32();
             }
         }
     }
 
     public class Force
     {
-        public uint FocusFlags { get; set; }
-        public uint PlayerMasks { get; set; }
+        public int FocusFlags { get; set; }
+        public int PlayerMasks { get; set; }
         public string Name { get; set; }
 
-        public void Serialize(BinaryWriter writer, uint formatVersion)
+        public void Serialize(BinaryWriter writer, int formatVersion)
         {
             writer.Write(this.FocusFlags);
             writer.Write(this.PlayerMasks);
             SerializeHelper.WriteString(writer, this.Name);
         }
 
-        public void Deserialize(BinaryReader reader, uint formatVersion)
+        public void Deserialize(BinaryReader reader, int formatVersion)
         {
-            this.FocusFlags = reader.ReadUInt32();
-            this.PlayerMasks = reader.ReadUInt32();
+            this.FocusFlags = reader.ReadInt32();
+            this.PlayerMasks = reader.ReadInt32();
             this.Name = SerializeHelper.ReadString(reader);
         }
     }
 
     public class AvailableUpgrade
     {
-        public uint PlayerFlags { get; set; }
+        public int PlayerFlags { get; set; }
         public FourCC UpgradeId { get; set; }
-        public uint Level { get; set; }
-        public uint Availability { get; set; }
+        public int Level { get; set; }
+        public int Availability { get; set; }
 
-        public void Serialize(BinaryWriter writer, uint formatVersion)
+        public void Serialize(BinaryWriter writer, int formatVersion)
         {
             writer.Write(this.PlayerFlags);
             this.UpgradeId.Serialize(writer);
@@ -455,43 +480,43 @@ namespace WarTransfer.FileTypes
             writer.Write(this.Availability);
         }
 
-        public void Deserialize(BinaryReader reader, uint formatVersion)
+        public void Deserialize(BinaryReader reader, int formatVersion)
         {
-            this.PlayerFlags = reader.ReadUInt32();
+            this.PlayerFlags = reader.ReadInt32();
             this.UpgradeId = FourCC.Deserialize(reader);
-            this.Level = reader.ReadUInt32();
-            this.Availability = reader.ReadUInt32();
+            this.Level = reader.ReadInt32();
+            this.Availability = reader.ReadInt32();
         }
     }
 
     public class AvailableTech
     {
-        public uint PlayerFlags { get; set; }
+        public int PlayerFlags { get; set; }
         public FourCC TechId { get; set; }
 
-        public void Serialize(BinaryWriter writer, uint formatVersion)
+        public void Serialize(BinaryWriter writer, int formatVersion)
         {
             writer.Write(this.PlayerFlags);
             this.TechId.Serialize(writer);
         }
 
-        public void Deserialize(BinaryReader reader, uint formatVersion)
+        public void Deserialize(BinaryReader reader, int formatVersion)
         {
-            this.PlayerFlags = reader.ReadUInt32();
+            this.PlayerFlags = reader.ReadInt32();
             this.TechId = FourCC.Deserialize(reader);
         }
     }
 
     public class RandomUnitsTable
     {
-        public uint TableNumber { get; set; }
+        public int TableNumber { get; set; }
         public string TableName { get; set; }
-        public uint PositionsCount { get; set; }
-        public uint[] Positions { get; set; }
-        public uint LinesCount { get; set; }
+        public int PositionsCount { get; set; }
+        public int[] Positions { get; set; }
+        public int LinesCount { get; set; }
         public RandomUnitsTableLine[] Lines { get; set; }
 
-        public void Serialize(BinaryWriter writer, uint formatVersion)
+        public void Serialize(BinaryWriter writer, int formatVersion)
         {
             writer.Write(this.TableNumber);
             SerializeHelper.WriteString(writer, this.TableName);
@@ -507,19 +532,19 @@ namespace WarTransfer.FileTypes
             }
         }
 
-        public void Deserialize(BinaryReader reader, uint formatVersion)
+        public void Deserialize(BinaryReader reader, int formatVersion)
         {
-            this.TableNumber = reader.ReadUInt32();
+            this.TableNumber = reader.ReadInt32();
             this.TableName = SerializeHelper.ReadString(reader);
 
-            this.PositionsCount = reader.ReadUInt32();
-            this.Positions = new uint[this.PositionsCount];
+            this.PositionsCount = reader.ReadInt32();
+            this.Positions = new int[this.PositionsCount];
             for (int i = 0; i < this.PositionsCount; i++)
             {
-                this.Positions[i] = reader.ReadUInt32();
+                this.Positions[i] = reader.ReadInt32();
             }
 
-            this.LinesCount = reader.ReadUInt32();
+            this.LinesCount = reader.ReadInt32();
             this.Lines = new RandomUnitsTableLine[this.LinesCount];
             for (int i = 0; i < this.LinesCount; i++)
             {
@@ -534,7 +559,7 @@ namespace WarTransfer.FileTypes
             clone.TableNumber = this.TableNumber;
             clone.TableName = this.TableName;
             clone.PositionsCount = this.PositionsCount;
-            clone.Positions = new uint[this.Positions.Length];
+            clone.Positions = new int[this.Positions.Length];
             clone.LinesCount = this.LinesCount;
             clone.Lines = new RandomUnitsTableLine[this.Lines.Length];
 
@@ -554,10 +579,10 @@ namespace WarTransfer.FileTypes
 
     public class RandomUnitsTableLine
     {
-        public uint Chance { get; set; }
+        public int Chance { get; set; }
         public FourCC[] PositionIds { get; set; }
 
-        public void Serialize(BinaryWriter writer, uint formatVersion)
+        public void Serialize(BinaryWriter writer, int formatVersion)
         {
             writer.Write(this.Chance);
             for (int i = 0; i < PositionIds.Length; i++)
@@ -566,9 +591,9 @@ namespace WarTransfer.FileTypes
             }
         }
 
-        public void Deserialize(BinaryReader reader, uint formatVersion, uint positionsCount)
+        public void Deserialize(BinaryReader reader, int formatVersion, int positionsCount)
         {
-            this.Chance = reader.ReadUInt32();
+            this.Chance = reader.ReadInt32();
             this.PositionIds = new FourCC[positionsCount];
             for (int i = 0; i < positionsCount; i++)
             {
@@ -593,12 +618,12 @@ namespace WarTransfer.FileTypes
 
     public class RandomItemsTable
     {
-        public uint TableId { get; set; }
+        public int TableId { get; set; }
         public string TableName { get; set; }
-        public uint SetCount { get; set; }
+        public int SetCount { get; set; }
         public RandomItemsTableSet[] Sets { get; set; }
 
-        public void Serialize(BinaryWriter writer, uint formatVersion)
+        public void Serialize(BinaryWriter writer, int formatVersion)
         {
             writer.Write(this.TableId);
             SerializeHelper.WriteString(writer, this.TableName);
@@ -609,11 +634,11 @@ namespace WarTransfer.FileTypes
             }
         }
 
-        public void Deserialize(BinaryReader reader, uint formatVersion)
+        public void Deserialize(BinaryReader reader, int formatVersion)
         {
-            this.TableId = reader.ReadUInt32();
+            this.TableId = reader.ReadInt32();
             this.TableName = SerializeHelper.ReadString(reader);
-            this.SetCount = reader.ReadUInt32();
+            this.SetCount = reader.ReadInt32();
             this.Sets = new RandomItemsTableSet[this.SetCount];
             for (int i = 0; i < this.SetCount; i++)
             {
@@ -641,10 +666,10 @@ namespace WarTransfer.FileTypes
 
     public class RandomItemsTableSet
     {
-        public uint ItemCount { get; set; }
+        public int ItemCount { get; set; }
         public RandomItem[] RandomItems { get; set; }
 
-        public void Serialize(BinaryWriter writer, uint formatVersion)
+        public void Serialize(BinaryWriter writer, int formatVersion)
         {
             writer.Write(this.ItemCount);
             for (int i = 0; i < this.ItemCount; i++)
@@ -653,9 +678,9 @@ namespace WarTransfer.FileTypes
             }
         }
 
-        public void Deserialize(BinaryReader reader, uint formatVersion)
+        public void Deserialize(BinaryReader reader, int formatVersion)
         {
-            this.ItemCount = reader.ReadUInt32();
+            this.ItemCount = reader.ReadInt32();
             this.RandomItems = new RandomItem[this.ItemCount];
             for (int i = 0; i < this.ItemCount; i++)
             {
@@ -682,18 +707,18 @@ namespace WarTransfer.FileTypes
 
     public class RandomItem
     {
-        public uint Chance { get; set; }
+        public int Chance { get; set; }
         public FourCC ItemId { get; set; }
 
-        public void Serialize(BinaryWriter writer, uint formatVersion)
+        public void Serialize(BinaryWriter writer, int formatVersion)
         {
             writer.Write(this.Chance);
             this.ItemId.Serialize(writer);
         }
 
-        public void Deserialize(BinaryReader reader, uint formatVersion)
+        public void Deserialize(BinaryReader reader, int formatVersion)
         {
-            this.Chance = reader.ReadUInt32();
+            this.Chance = reader.ReadInt32();
             this.ItemId = FourCC.Deserialize(reader);
         }
 

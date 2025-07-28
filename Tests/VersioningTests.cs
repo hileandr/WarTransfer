@@ -8,6 +8,7 @@ namespace Tests
     public class VersioningTests
     {
         public const string SimpleVersionNumberRegex = "\\d+\\.\\d+(?:\\.\\d+)*";
+        public const string VersionNumberRegexWithLetter = "\\d+\\.?\\d+[a-zA-Z]?";
 
         [TestMethod]
         public void NoVersionTest()
@@ -75,6 +76,18 @@ namespace Tests
             updatedMapName = VersionUtility.ChangeFileNameVersion(simpleMapNameOldVers);
 
             Assert.IsTrue(updatedMapName == "anotherTest1.09_someText.w3x");
+        }
+
+        [TestMethod]
+        public void SimpleVersionReplacementTest2()
+        {
+            string simpleMapName = "BF1.06b_Blightwalk.w3x";
+            string simpleMapNameOldVers = "BF1.06a_DesertStorm.w3x";
+            VersionUtility.UpdateVersion(simpleMapName, VersionNumberRegexWithLetter);
+
+            string updatedMapName = VersionUtility.ChangeFileNameVersion(simpleMapNameOldVers);
+
+            Assert.IsTrue(updatedMapName == "BF1.06b_DesertStorm.w3x");
         }
     }
 }
