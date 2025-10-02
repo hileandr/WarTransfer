@@ -23,6 +23,8 @@ namespace WarFiles
 
         public void Deserialize(BinaryReader reader, TriggerFile triggerFile)
         {
+            StringBuilder sb = new StringBuilder(256);
+
             uint version = reader.ReadUInt32();
             if (version != 0x80000004)
             {
@@ -32,7 +34,7 @@ namespace WarFiles
 
                     if (version == 1)
                     {
-                        Comment = SerializeHelper.ReadString(reader);
+                        Comment = SerializeHelper.ReadString(reader, sb);
 
                         uint headerSize = reader.ReadUInt32();
                         Header = new string(SerializeHelper.ReadCharArr(reader, headerSize));
@@ -64,7 +66,7 @@ namespace WarFiles
 
                 if (FileVersion == 1)
                 {
-                    Comment = SerializeHelper.ReadString(reader);
+                    Comment = SerializeHelper.ReadString(reader, sb);
 
                     uint headerSize = reader.ReadUInt32();
                     Header = new string(SerializeHelper.ReadCharArr(reader, headerSize));

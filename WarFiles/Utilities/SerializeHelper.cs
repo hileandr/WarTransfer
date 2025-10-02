@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
 
 namespace WarFiles.Serialization
 {
@@ -9,18 +10,16 @@ namespace WarFiles.Serialization
         // Writers
         public static void WriteString(BinaryWriter writer, string s)
         {
-            if (s.Length > 0)
+            if (string.IsNullOrEmpty(s))
             {
-                if (s[s.Length - 1] != '\0')
-                {
-                    s += '\0';
-                }
-
-                for (int i = 0; i < s.Length; i++)
-                {
-                    writer.Write(s[i]);
-                }
+                writer.Write('\0');
+                return;
             }
+            if (s[s.Length - 1] != '\0')
+                s += '\0';
+
+            // Slightly faster than per-char Write
+            writer.Write(s.ToCharArray());
         }
 
         public static void WriteArray(BinaryWriter writer, char[] arr)
@@ -47,43 +46,31 @@ namespace WarFiles.Serialization
             }
         }
 
-        // Readers
-        public static string ReadString(BinaryReader reader)
+        public static int ReadCount(BinaryReader reader, string fieldName, int maxInclusive)
         {
-            string s = "";
-            char c = '0';
-
-            while (c != '\0')
-            {
-                c = reader.ReadChar();
-
-                if (c != '\0')
-                    s += c;
-            }
-
-            return s;
+            int value = reader.ReadInt32();
+            if (value < 0 || value > maxInclusive)
+                throw new FormatException($"{fieldName}={value} is out of bounds (0..{maxInclusive}). Offset={reader.BaseStream.Position}");
+            return value;
         }
 
-        //public static string ReadString(BinaryReader reader, uint size)
-        //{
-        //    string s = "";
-        //    char c = '0';
+        // Readers
+        public static string ReadString(BinaryReader reader, StringBuilder sb, int maxChars = 1_000_000)
+        {
+            sb.Clear();
 
-        //    for (uint i = 0; i < size; i++)
-        //    {
-        //        c = reader.ReadChar();
-        //    }
+            int count = 0;
+            while (true)
+            {
+                if (count++ > maxChars)
+                    throw new FormatException($"String exceeded max length ({maxChars}). Offset={reader.BaseStream.Position}");
 
-        //    while (c != '\0')
-        //    {
-        //        c = reader.ReadChar();
-
-        //        if (c != '\0')
-        //            s += c;
-        //    }
-
-        //    return s;
-        //}
+                char c = reader.ReadChar(); // relies on same encoding used by writer
+                if (c == '\0') break;
+                sb.Append(c);
+            }
+            return sb.ToString();
+        }
 
         public static char[] ReadCharArr(BinaryReader reader, uint size)
         {

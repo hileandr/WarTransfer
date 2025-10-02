@@ -14,12 +14,14 @@ namespace WarTransfer
 
         public static W3iFile ReadFile(IWorkflowHandler e, string filePath)
         {
+            var utf8 = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
+
             W3iFile file = null;
             try
             {
                 using (FileStream stream = new FileStream(filePath, FileMode.Open))
                 {
-                    using (BinaryReader reader = new BinaryReader(stream))
+                    using (BinaryReader reader = new BinaryReader(stream, utf8))
                     {
                         file = W3iFile.Read(reader);
                     }
@@ -35,11 +37,13 @@ namespace WarTransfer
 
         public static void WriteFile(IWorkflowHandler e, string filePath, W3iFile file)
         {
+            var utf8 = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
+
             try
             {
                 using (FileStream stream = new FileStream(filePath, FileMode.Create))
                 {
-                    using (BinaryWriter writer = new BinaryWriter(stream))
+                    using (BinaryWriter writer = new BinaryWriter(stream, utf8))
                     {
                         file.Serialize(writer);
                     }

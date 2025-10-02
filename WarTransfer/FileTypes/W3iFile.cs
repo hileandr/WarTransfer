@@ -1,12 +1,8 @@
 ﻿using WarTransfer.Types;
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Runtime.Serialization;
 using System.Text;
-using System.Threading.Tasks;
-using System.Runtime.Remoting.Messaging;
+using WarTransfer.Utilities;
 
 namespace WarTransfer.FileTypes
 {
@@ -138,7 +134,7 @@ namespace WarTransfer.FileTypes
             writer.Write(this.PlayableWidth);
             writer.Write(this.PlayableHeight);
             writer.Write((int)this.Flags);
-            writer.Write(this.TileSet);
+            writer.Write((byte)this.TileSet);
             writer.Write(this.LoadingScreenId);
 
             if (this.FormatVersion >= 25)
@@ -201,7 +197,7 @@ namespace WarTransfer.FileTypes
             if (this.FormatVersion >= 33)
             {
                 writer.Write(this.ForceDefaultCameraZoom);
-                writer.Write(this.ForceMaxCameraZoom);
+                writer.Write(this.ForceMinCameraZoom);
                 writer.Write(this.ForceMaxCameraZoom);
             }
 
@@ -247,6 +243,8 @@ namespace WarTransfer.FileTypes
 
         public void Deserialize(BinaryReader reader)
         {
+            StringBuilder sb = new StringBuilder(256);
+
             this.FormatVersion = reader.ReadInt32();
             this.MapVersion = reader.ReadInt32();
             this.EditorVersion = reader.ReadInt32();
@@ -259,10 +257,10 @@ namespace WarTransfer.FileTypes
                 this.GameVersionBuild = reader.ReadInt32();
             }
 
-            this.Name = SerializeHelper.ReadString(reader);
-            this.Author = SerializeHelper.ReadString(reader);
-            this.Description = SerializeHelper.ReadString(reader);
-            this.SuggestedPlayers = SerializeHelper.ReadString(reader);
+            this.Name = SerializeHelper.ReadString(reader, sb);
+            this.Author = SerializeHelper.ReadString(reader, sb);
+            this.Description = SerializeHelper.ReadString(reader, sb);
+            this.SuggestedPlayers = SerializeHelper.ReadString(reader, sb);
             this.CameraLeftBottom = SerializeHelper.ReadFloatArr(reader, 2);
             this.CameraRightTop = SerializeHelper.ReadFloatArr(reader, 2);
             this.CameraLeftTop = SerializeHelper.ReadFloatArr(reader, 2);
@@ -271,17 +269,17 @@ namespace WarTransfer.FileTypes
             this.PlayableWidth = reader.ReadInt32();
             this.PlayableHeight = reader.ReadInt32();
             this.Flags = (W3iFlags)reader.ReadInt32();
-            this.TileSet = reader.ReadChar();
+            this.TileSet = (char)reader.ReadByte();
             this.LoadingScreenId = reader.ReadInt32();
 
             if (this.FormatVersion >= 25)
             {
-                this.LoadingScreenModel = SerializeHelper.ReadString(reader);
+                this.LoadingScreenModel = SerializeHelper.ReadString(reader, sb);
             }
 
-            this.LoadingScreenText = SerializeHelper.ReadString(reader);
-            this.LoadingScreenTitle = SerializeHelper.ReadString(reader);
-            this.LoadingScreenSubtitle = SerializeHelper.ReadString(reader);
+            this.LoadingScreenText = SerializeHelper.ReadString(reader, sb);
+            this.LoadingScreenTitle = SerializeHelper.ReadString(reader, sb);
+            this.LoadingScreenSubtitle = SerializeHelper.ReadString(reader, sb);
 
             if (this.FormatVersion >= 25)
             {
@@ -295,12 +293,12 @@ namespace WarTransfer.FileTypes
 
             if (this.FormatVersion >= 25)
             {
-                this.PrologueScreenModel = SerializeHelper.ReadString(reader);
+                this.PrologueScreenModel = SerializeHelper.ReadString(reader, sb);
             }
 
-            this.PrologueText = SerializeHelper.ReadString(reader);
-            this.PrologueTitle = SerializeHelper.ReadString(reader);
-            this.PrologueSubtitle = SerializeHelper.ReadString(reader);
+            this.PrologueText = SerializeHelper.ReadString(reader, sb);
+            this.PrologueTitle = SerializeHelper.ReadString(reader, sb);
+            this.PrologueSubtitle = SerializeHelper.ReadString(reader, sb);
 
             if (this.FormatVersion >= 25)
             {
@@ -313,7 +311,7 @@ namespace WarTransfer.FileTypes
                 this.FogColorBlue = reader.ReadByte();
                 this.FogColorAlpha = reader.ReadByte();
                 this.WeatherId = FourCC.Deserialize(reader);
-                this.CustomSoundEnvironment = SerializeHelper.ReadString(reader);
+                this.CustomSoundEnvironment = SerializeHelper.ReadString(reader, sb);
                 this.CustomLightTileset = reader.ReadByte();
                 this.WaterTintRed = reader.ReadByte();
                 this.WaterTintGreen = reader.ReadByte();
@@ -334,27 +332,27 @@ namespace WarTransfer.FileTypes
             if (this.FormatVersion >= 33)
             {
                 this.ForceDefaultCameraZoom = reader.ReadInt32();
-                this.ForceMaxCameraZoom = reader.ReadInt32();
+                this.ForceMinCameraZoom = reader.ReadInt32();
                 this.ForceMaxCameraZoom = reader.ReadInt32();
             }
 
-            this.PlayerCount = reader.ReadInt32();
+            this.PlayerCount = SerializeHelper.ReadCount(reader, nameof(PlayerCount), 24);
             this.Players = new Player[this.PlayerCount];
             for (int i = 0; i < this.PlayerCount; i++)
             {
                 this.Players[i] = new Player();
-                this.Players[i].Deserialize(reader, this.FormatVersion);
+                this.Players[i].Deserialize(reader, sb, this.FormatVersion);
             }
 
-            this.ForcesCount = reader.ReadInt32();
+            this.ForcesCount = SerializeHelper.ReadCount(reader, nameof(ForcesCount), 6);
             this.Forces = new Force[this.ForcesCount];
             for (int i = 0; i < this.ForcesCount; i++)
             {
                 this.Forces[i] = new Force();
-                this.Forces[i].Deserialize(reader, this.FormatVersion);
+                this.Forces[i].Deserialize(reader, sb, this.FormatVersion);
             }
 
-            this.AvailableUpgradesCount = reader.ReadInt32();
+            this.AvailableUpgradesCount = SerializeHelper.ReadCount(reader, nameof(AvailableUpgradesCount), 1024);
             this.AvailableUpgrades = new AvailableUpgrade[this.AvailableUpgradesCount];
             for (int i = 0; i < this.AvailableUpgradesCount; i++)
             {
@@ -362,7 +360,7 @@ namespace WarTransfer.FileTypes
                 this.AvailableUpgrades[i].Deserialize(reader, this.FormatVersion);
             }
 
-            this.AvailableTechCount = reader.ReadInt32();
+            this.AvailableTechCount = SerializeHelper.ReadCount(reader, nameof(AvailableTechCount), 1024);
             this.AvailableTechs = new AvailableTech[this.AvailableTechCount];
             for (int i = 0; i < this.AvailableTechCount; i++)
             {
@@ -370,22 +368,22 @@ namespace WarTransfer.FileTypes
                 this.AvailableTechs[i].Deserialize(reader, this.FormatVersion);
             }
 
-            this.RandomUnitsTableCount = reader.ReadInt32();
+            this.RandomUnitsTableCount = SerializeHelper.ReadCount(reader, nameof(RandomUnitsTableCount), 1024);
             this.RandomUnitsTables = new RandomUnitsTable[this.RandomUnitsTableCount];
             for (int i = 0; i < this.RandomUnitsTableCount; i++)
             {
                 this.RandomUnitsTables[i] = new RandomUnitsTable();
-                this.RandomUnitsTables[i].Deserialize(reader, this.FormatVersion);
+                this.RandomUnitsTables[i].Deserialize(reader, sb, this.FormatVersion);
             }
 
             if (this.FormatVersion >= 25)
             {
-                this.RandomItemsTableCount = reader.ReadInt32();
+                this.RandomItemsTableCount = SerializeHelper.ReadCount(reader, nameof(RandomItemsTableCount), 1024);
                 this.RandomItemsTables = new RandomItemsTable[this.RandomItemsTableCount];
                 for (int i = 0; i < this.RandomItemsTableCount; i++)
                 {
                     this.RandomItemsTables[i] = new RandomItemsTable();
-                    this.RandomItemsTables[i].Deserialize(reader, this.FormatVersion);
+                    this.RandomItemsTables[i].Deserialize(reader, sb, this.FormatVersion);
                 }
             }
         }
@@ -424,13 +422,13 @@ namespace WarTransfer.FileTypes
             }
         }
 
-        public void Deserialize(BinaryReader reader, int formatVersion)
+        public void Deserialize(BinaryReader reader, StringBuilder sb, int formatVersion)
         {
             this.InternalNumber = reader.ReadInt32();
             this.TypeId = reader.ReadInt32();
             this.RaceId = reader.ReadInt32();
             this.FixedStartLocation = reader.ReadInt32();
-            this.Name = SerializeHelper.ReadString(reader);
+            this.Name = SerializeHelper.ReadString(reader, sb);
             this.StartingPosX = reader.ReadSingle();
             this.StartingPosY = reader.ReadSingle();
             this.AllyLowPrioritiesFlag = reader.ReadInt32();
@@ -457,11 +455,11 @@ namespace WarTransfer.FileTypes
             SerializeHelper.WriteString(writer, this.Name);
         }
 
-        public void Deserialize(BinaryReader reader, int formatVersion)
+        public void Deserialize(BinaryReader reader, StringBuilder sb, int formatVersion)
         {
             this.FocusFlags = reader.ReadInt32();
             this.PlayerMasks = reader.ReadInt32();
-            this.Name = SerializeHelper.ReadString(reader);
+            this.Name = SerializeHelper.ReadString(reader, sb);
         }
     }
 
@@ -532,19 +530,19 @@ namespace WarTransfer.FileTypes
             }
         }
 
-        public void Deserialize(BinaryReader reader, int formatVersion)
+        public void Deserialize(BinaryReader reader, StringBuilder sb, int formatVersion)
         {
             this.TableNumber = reader.ReadInt32();
-            this.TableName = SerializeHelper.ReadString(reader);
+            this.TableName = SerializeHelper.ReadString(reader, sb);
 
-            this.PositionsCount = reader.ReadInt32();
+            this.PositionsCount = SerializeHelper.ReadCount(reader, nameof(PositionsCount), 1024);
             this.Positions = new int[this.PositionsCount];
             for (int i = 0; i < this.PositionsCount; i++)
             {
                 this.Positions[i] = reader.ReadInt32();
             }
 
-            this.LinesCount = reader.ReadInt32();
+            this.LinesCount = SerializeHelper.ReadCount(reader, nameof(LinesCount), 1024);
             this.Lines = new RandomUnitsTableLine[this.LinesCount];
             for (int i = 0; i < this.LinesCount; i++)
             {
@@ -634,11 +632,11 @@ namespace WarTransfer.FileTypes
             }
         }
 
-        public void Deserialize(BinaryReader reader, int formatVersion)
+        public void Deserialize(BinaryReader reader, StringBuilder sb, int formatVersion)
         {
             this.TableId = reader.ReadInt32();
-            this.TableName = SerializeHelper.ReadString(reader);
-            this.SetCount = reader.ReadInt32();
+            this.TableName = SerializeHelper.ReadString(reader, sb);
+            this.SetCount = SerializeHelper.ReadCount(reader, nameof(SetCount), 1024);
             this.Sets = new RandomItemsTableSet[this.SetCount];
             for (int i = 0; i < this.SetCount; i++)
             {
@@ -680,7 +678,7 @@ namespace WarTransfer.FileTypes
 
         public void Deserialize(BinaryReader reader, int formatVersion)
         {
-            this.ItemCount = reader.ReadInt32();
+            this.ItemCount = SerializeHelper.ReadCount(reader, nameof(ItemCount), 1024);
             this.RandomItems = new RandomItem[this.ItemCount];
             for (int i = 0; i < this.ItemCount; i++)
             {

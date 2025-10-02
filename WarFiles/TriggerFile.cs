@@ -37,6 +37,8 @@ namespace WarFiles
 
         public void Deserialize(BinaryReader reader, TriggerData triggerData)
         {
+            StringBuilder sb = new StringBuilder(256);
+
             // Should be 'WTG!'
             FourCC header = FourCC.Deserialize(reader);
 
@@ -45,7 +47,7 @@ namespace WarFiles
             if (version == 0x80000004)
             {
                 FormatVersion = reader.ReadUInt32();
-                Deserialize_131(reader, triggerData);
+                Deserialize_131(reader, sb, triggerData);
             }
             else
             {
@@ -54,7 +56,7 @@ namespace WarFiles
             }
         }
 
-        private void Deserialize_131(BinaryReader reader, TriggerData triggerData)
+        private void Deserialize_131(BinaryReader reader, StringBuilder sb, TriggerData triggerData)
         {
             DeletedMapIds = DeserializeDeletedIds(reader);
             DeletedLibraryIds = DeserializeDeletedIds(reader);
@@ -76,7 +78,7 @@ namespace WarFiles
                 for (uint i = 0; i < numVariables; i++)
                 {
                     TriggerVariable variable = new TriggerVariable();
-                    variable.Deserialize(reader, FormatVersion);
+                    variable.Deserialize(reader, sb, FormatVersion);
 
                     Variables.Add(variable);
                 }
@@ -97,7 +99,7 @@ namespace WarFiles
                     case ElementType.Category:
                         {
                             TriggerCategory category = new TriggerCategory();
-                            category.Deserialize(reader, FormatVersion, true);
+                            category.Deserialize(reader, sb, FormatVersion, true);
 
                             Categories.Add(category);
                         }
@@ -107,7 +109,7 @@ namespace WarFiles
                     case ElementType.Script:
                         {
                             Trigger trigger = new Trigger(elementType);
-                            trigger.Deserialize(reader, FormatVersion, true, triggerData);
+                            trigger.Deserialize(reader, sb, FormatVersion, true, triggerData);
 
                             Triggers.Add(trigger);
                         }
@@ -115,7 +117,7 @@ namespace WarFiles
                     case ElementType.Variable:
                         {
                             uint variableId = reader.ReadUInt32();
-                            string variableName = SerializeHelper.ReadString(reader);
+                            string variableName = SerializeHelper.ReadString(reader, sb);
                             uint variableParentId = reader.ReadUInt32();
                         }
                         break;
@@ -147,11 +149,11 @@ namespace WarFiles
         public bool IsComment { get; set; }
         public bool IsExpanded { get; set; }
 
-        public void Deserialize(BinaryReader reader, uint formatVersion, bool is131)
+        public void Deserialize(BinaryReader reader, StringBuilder sb, uint formatVersion, bool is131)
         {
             if (is131)
             {
-                Deserialize_131(reader, formatVersion);
+                Deserialize_131(reader, sb, formatVersion);
             }
             else
             {
@@ -166,10 +168,10 @@ namespace WarFiles
             }
         }
 
-        private void Deserialize_131(BinaryReader reader, uint formatVersion)
+        private void Deserialize_131(BinaryReader reader, StringBuilder sb, uint formatVersion)
         {
             Id = reader.ReadUInt32();
-            Name = SerializeHelper.ReadString(reader);
+            Name = SerializeHelper.ReadString(reader, sb);
             
             if (formatVersion == 7)
             {
@@ -192,10 +194,10 @@ namespace WarFiles
         public bool IsInitialized { get; set; }
         public string InitialValue { get; set; }
 
-        public void Deserialize(BinaryReader reader, uint formatVersion)
+        public void Deserialize(BinaryReader reader, StringBuilder sb, uint formatVersion)
         {
-            Name = SerializeHelper.ReadString(reader);
-            Type = SerializeHelper.ReadString(reader);
+            Name = SerializeHelper.ReadString(reader, sb);
+            Type = SerializeHelper.ReadString(reader, sb);
 
             uint unknown = reader.ReadUInt32();
 
@@ -207,7 +209,7 @@ namespace WarFiles
             }
 
             IsInitialized = (reader.ReadUInt32() != 0);
-            InitialValue = SerializeHelper.ReadString(reader);
+            InitialValue = SerializeHelper.ReadString(reader, sb);
             Id = reader.ReadUInt32();
             ParentId = reader.ReadUInt32();
         }
@@ -233,11 +235,11 @@ namespace WarFiles
             this.ElementType = elementType;
         }
 
-        public void Deserialize(BinaryReader reader, uint formatVersion, bool use131, TriggerData triggerData)
+        public void Deserialize(BinaryReader reader, StringBuilder sb, uint formatVersion, bool use131, TriggerData triggerData)
         {
             if (use131)
             {
-                Deserialize_131(reader, formatVersion, triggerData);
+                Deserialize_131(reader, sb, formatVersion, triggerData);
             }
             else
             {
@@ -270,10 +272,10 @@ namespace WarFiles
             }
         }
 
-        private void Deserialize_131(BinaryReader reader, uint formatVersion, TriggerData triggerData)
+        private void Deserialize_131(BinaryReader reader, StringBuilder sb, uint formatVersion, TriggerData triggerData)
         {
-            Name = SerializeHelper.ReadString(reader);
-            Description = SerializeHelper.ReadString(reader);
+            Name = SerializeHelper.ReadString(reader, sb);
+            Description = SerializeHelper.ReadString(reader, sb);
 
             if (formatVersion == 7)
             {
@@ -295,7 +297,7 @@ namespace WarFiles
                 for (uint i = 0; i < numGUIFunctions; i++)
                 {
                     GUIFunction guiFunction = new GUIFunction();
-                    guiFunction.Deserialize(reader, formatVersion, false, true, triggerData);
+                    guiFunction.Deserialize(reader, sb, formatVersion, false, true, triggerData);
 
                     GUIFunctions.Add(guiFunction);
                 }
@@ -320,11 +322,11 @@ namespace WarFiles
         public uint Data1 { get; set; }
         public List<GUIFunction> Children { get; set; }
 
-        public void Deserialize(BinaryReader reader, uint formatVersion, bool isChild, bool use131, TriggerData triggerData)
+        public void Deserialize(BinaryReader reader, StringBuilder sb, uint formatVersion, bool isChild, bool use131, TriggerData triggerData)
         {
             if (use131)
             {
-                Deserialize_131(reader, formatVersion, isChild, triggerData);
+                Deserialize_131(reader, sb, formatVersion, isChild, triggerData);
             }
             else
             {
@@ -366,7 +368,7 @@ namespace WarFiles
             }
         }
 
-        private void Deserialize_131(BinaryReader reader, uint formatVersion, bool isChild, TriggerData triggerData)
+        private void Deserialize_131(BinaryReader reader, StringBuilder sb, uint formatVersion, bool isChild, TriggerData triggerData)
         {
             FunctionType = (GUIFunctionType)reader.ReadUInt32();
 
@@ -375,7 +377,7 @@ namespace WarFiles
                 GroupNumber = reader.ReadUInt32();
             }
 
-            Name = SerializeHelper.ReadString(reader);
+            Name = SerializeHelper.ReadString(reader, sb);
             IsEnabled = (reader.ReadUInt32() != 0);
 
             uint paramCount = triggerData.GetArgCount(Name);
@@ -384,7 +386,7 @@ namespace WarFiles
             for (uint i = 0; i < paramCount; i++)
             {
                 Params[i] = new GUIParam();
-                Params[i].Deserialize(reader, formatVersion, triggerData);
+                Params[i].Deserialize(reader, sb, formatVersion, triggerData);
             }
 
             if (formatVersion == 7)
@@ -397,7 +399,7 @@ namespace WarFiles
                     for (uint i = 0; i < numChildren; i++)
                     {
                         GUIFunction child = new GUIFunction();
-                        child.Deserialize_131(reader, formatVersion, true, triggerData);
+                        child.Deserialize_131(reader, sb, formatVersion, true, triggerData);
                         Children.Add(child);
                     }
                 }
@@ -422,15 +424,15 @@ namespace WarFiles
         public GUISubParameter SubParameter { get; set; }
         public List<GUIParam> Children { get; set; }
 
-        public void Deserialize(BinaryReader reader, uint fileVersion, TriggerData triggerData)
+        public void Deserialize(BinaryReader reader, StringBuilder sb, uint fileVersion, TriggerData triggerData)
         {
             ParamType = (GUIParamType)reader.ReadUInt32();
-            Value = SerializeHelper.ReadString(reader);
+            Value = SerializeHelper.ReadString(reader, sb);
             HasSubParameter = (reader.ReadUInt32() != 0);
             if (HasSubParameter)
             {
                 SubParameter = new GUISubParameter();
-                SubParameter.Deserialize(reader, fileVersion, triggerData);
+                SubParameter.Deserialize(reader, sb, fileVersion, triggerData);
             }
 
             if (fileVersion == 4)
@@ -457,7 +459,7 @@ namespace WarFiles
             if (IsArray)
             {
                 GUIParam child = new GUIParam();
-                child.Deserialize(reader, fileVersion, triggerData);
+                child.Deserialize(reader, sb, fileVersion, triggerData);
 
                 Children = new List<GUIParam>() { child };
             }
@@ -479,10 +481,10 @@ namespace WarFiles
         public bool BeginParameters { get; set; }
         public List<GUIParam> Parameters { get; set; }
 
-        public void Deserialize(BinaryReader reader, uint fileVersion, TriggerData triggerData)
+        public void Deserialize(BinaryReader reader, StringBuilder sb, uint fileVersion, TriggerData triggerData)
         {
             SubParamType = (GUISubParameterType)reader.ReadUInt32();
-            Name = SerializeHelper.ReadString(reader);
+            Name = SerializeHelper.ReadString(reader, sb);
             BeginParameters = (reader.ReadUInt32() != 0);
             if (BeginParameters)
             {
@@ -492,7 +494,7 @@ namespace WarFiles
                 for (uint i = 0; i < paramCount; i++)
                 {
                     GUIParam param = new GUIParam();
-                    param.Deserialize(reader, fileVersion, triggerData);
+                    param.Deserialize(reader, sb, fileVersion, triggerData);
 
                     Parameters.Add(param);
                 }
