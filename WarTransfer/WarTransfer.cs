@@ -15,6 +15,7 @@ namespace WarTransfer
         private string m_sourceMap = null;
         private string m_outDirectory = null;
         private WarTransferArgs m_args = null;
+        private int m_totalMapContentFilesCount = 0;
 
         private static readonly string TempSourceDirectory = Path.Combine(Path.GetTempPath(), "WarTransfer", "Source");
         private static readonly string TempTargetDirectory = Path.Combine(Path.GetTempPath(), "WarTransfer", "Target");
@@ -180,12 +181,13 @@ namespace WarTransfer
 
         private void EnsureSourceMap(IWorkflowHandler e)
         {
+            bool success = false;
             string sourceMapName = Path.GetFileName(m_sourceMap);
 
             if (File.Exists(m_sourceMap))
             {
                 string sourceMapCopy = Path.Combine(TempSourceDirectory, Path.GetFileName(m_sourceMap));
-                bool success = MPQUtility.MapFileToMapDirectory(e, m_sourceMap, sourceMapCopy);
+                success = MPQUtility.MapFileToMapDirectory(e, m_sourceMap, sourceMapCopy);
                 if (success)
                 {
                     m_sourceMap = sourceMapCopy;
@@ -197,7 +199,7 @@ namespace WarTransfer
             }
             else if (Directory.Exists(m_sourceMap))
             {
-                bool success = true;
+                success = true;
                 string desiredLocation = Path.Combine(TempSourceDirectory, sourceMapName);
                 if (m_sourceMap != desiredLocation && !Directory.Exists(desiredLocation))
                 {
@@ -212,6 +214,12 @@ namespace WarTransfer
             else
             {
                 e.ReportError($"Unable to find source map \"{m_sourceMap}\"", true);
+            }
+
+            // Count the number of files in the source map. We need to know this when creating the new MPQ archives.
+            if (success)
+            {
+                m_totalMapContentFilesCount = IOUtility.CountFilesDeep(e, m_sourceMap);
             }
         }
 
@@ -278,7 +286,7 @@ namespace WarTransfer
 
                     e.Log(LogType.Debug, $"Copying map file \"{mapName}\" to \"{outMap}\".");
 
-                    bool success = MPQUtility.MapDirectoryToMapFile(e, mapDirectory, outMap);
+                    bool success = MPQUtility.MapDirectoryToMapFile(e, mapDirectory, outMap, m_totalMapContentFilesCount);
 
                     if (success)
                     {

@@ -44,6 +44,21 @@ namespace WarTransfer
             return mapFiles.Length + mapDirectories.Length;
         }
 
+        internal static int CountFilesDeep(IWorkflowHandler e, string directory)
+        {
+            int count = 0;
+            try
+            {
+                count = Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories).Count();
+            }
+            catch (Exception ex)
+            {
+                e.ReportError(ex, false);
+            }
+
+            return count;
+        }
+
         internal static bool CopyFile(IWorkflowHandler e, string sourceFile, string destinationFile)
         {
             try
