@@ -13,9 +13,9 @@ namespace WarTransfer
     {
         private string m_sourceDirectory = null;
         private string m_sourceMap = null;
+        private string m_sourceArchive = null;
         private string m_outDirectory = null;
         private WarTransferArgs m_args = null;
-        private int m_totalMapContentFilesCount = 0;
 
         private string TempSourceDirectory;
         private string TempTargetDirectory;
@@ -75,6 +75,7 @@ namespace WarTransfer
         private void ExecuteDataTransferCore(IWorkflowHandler e, WarTransferArgs args)
         {
             this.m_sourceMap = args.SourceMap;
+            this.m_sourceArchive = File.Exists(args.SourceMap) ? Path.GetFullPath(args.SourceMap) : null;
             this.m_sourceDirectory = Path.GetFullPath(args.SourceDirectory);
             this.m_outDirectory = args.OutputDirectory;
             this.m_args = args;
@@ -232,11 +233,6 @@ namespace WarTransfer
                 e.ReportError($"Unable to find source map \"{m_sourceMap}\"", true);
             }
 
-            // Count the number of files in the source map. We need to know this when creating the new MPQ archives.
-            if (success)
-            {
-                m_totalMapContentFilesCount = IOUtility.CountFilesDeep(e, m_sourceMap);
-            }
         }
 
         private List<string> CopyMapsToDirectory(IWorkflowHandler e, string sourceDirectory, string targetDirectory, TargetMapType targetType)
@@ -302,7 +298,7 @@ namespace WarTransfer
 
                     e.Log(LogType.Debug, $"Copying map file \"{mapName}\" to \"{outMap}\".");
 
-                    bool success = MPQUtility.MapDirectoryToMapFile(e, mapDirectory, outMap, m_totalMapContentFilesCount, m_args.MpqEditorPath);
+                    bool success = MPQUtility.MapDirectoryToMapFile(e, mapDirectory, outMap, m_args.MpqEditorPath, m_sourceArchive, m_sourceMap);
 
                     if (success)
                     {

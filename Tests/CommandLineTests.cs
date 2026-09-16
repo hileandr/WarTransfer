@@ -188,11 +188,11 @@ namespace Tests
                 .Select(i => "STRING " + i + "\n{\nFixture " + i + "\n}\n")));
             File.WriteAllText(Path.Combine(contents, "custom-data.txt"), "source data");
             File.WriteAllText(Path.Combine(contents, "war3map.w3e"), "source terrain marker");
-            Assert.IsTrue(MPQUtility.MapDirectoryToMapFile(handler, contents, source, 10, editor));
+            Assert.IsTrue(MPQUtility.MapDirectoryToMapFile(handler, contents, source, editor));
             File.WriteAllText(Path.Combine(contents, "custom-data.txt"), "target data");
             File.WriteAllText(Path.Combine(contents, "war3map.w3e"), "target terrain marker");
             string target = Path.Combine(targets, "terrain 1.0.w3m");
-            Assert.IsTrue(MPQUtility.MapDirectoryToMapFile(handler, contents, target, 10, editor));
+            Assert.IsTrue(MPQUtility.MapDirectoryToMapFile(handler, contents, target, editor));
             var sourceBytes = File.ReadAllBytes(source);
             var targetBytes = File.ReadAllBytes(target);
             Run(0, Args("--version-regex", @"\d+\.\d+"));
@@ -215,6 +215,50 @@ namespace Tests
             File.WriteAllText(source, "broken archive");
             Run(1, Args("--version-regex", @"\d+\.\d+", "--overwrite"));
             CollectionAssert.AreEqual(producedBytes, File.ReadAllBytes(produced));
+        }
+
+        [TestMethod]
+        public void UnnamedEntriesCannotBeRebuiltWithoutOriginalArchive()
+        {
+            string contents = Path.Combine(root, "unnamed");
+            Directory.CreateDirectory(contents);
+            File.WriteAllText(Path.Combine(contents, "File00009802.blp"), "texture bytes");
+            string destination = Path.Combine(root, "existing.w3x");
+            File.WriteAllText(destination, "preserve existing output");
+            var handler = new CommandLineErrorHandler(TextWriter.Null, false);
+            Assert.IsFalse(MPQUtility.MapDirectoryToMapFile(handler, contents, destination, editor));
+            Assert.IsTrue(handler.KillProcess);
+            StringAssert.Contains(string.Join("\n", handler.Errors), "original source archive");
+            Assert.AreEqual("preserve existing output", File.ReadAllText(destination));
+        }
+
+        [TestMethod]
+        [TestCategory("Integration")]
+        public void ArchiveVerificationDetectsSilentOmissionsAndChangedBytes()
+        {
+            string tool = Environment.GetEnvironmentVariable("WARTRANSFER_TEST_MPQ_EDITOR");
+            if (string.IsNullOrEmpty(tool) || !File.Exists(tool)) Assert.Inconclusive("Set WARTRANSFER_TEST_MPQ_EDITOR.");
+            string contents = Path.Combine(root, "capacity");
+            Directory.CreateDirectory(contents);
+            for (int i = 0; i < 8; i++) File.WriteAllText(Path.Combine(contents, "asset" + i + ".mdx"), "asset bytes");
+            string archive = Path.Combine(root, "full.w3x");
+            var handler = new CommandLineErrorHandler(TextWriter.Null, false);
+            Assert.AreEqual(0, IOUtility.RunProcessCommand(handler, tool, $"n \"{archive}\" 4"));
+            // MPQEditor 3.6 reports zero even though the archive runs out of slots.
+            IOUtility.RunProcessCommand(handler, tool, $"a \"{archive}\" \"{contents}\" /c /r");
+            // A metadata file that was not packed must always fail verification,
+            // including with tool versions that automatically grow the file table.
+            File.WriteAllText(Path.Combine(contents, "war3map.w3i"), "missing metadata");
+            Assert.IsFalse(MPQUtility.VerifyArchive(handler, contents, archive, tool));
+            Assert.IsTrue(handler.KillProcess);
+
+            handler = new CommandLineErrorHandler(TextWriter.Null, false);
+            Assert.IsTrue(MPQUtility.MapDirectoryToMapFile(handler, contents, archive, tool));
+            Assert.IsTrue(MPQUtility.VerifyArchive(handler, contents, archive, tool));
+            File.WriteAllText(Path.Combine(contents, "asset0.mdx"), "other bytes");
+            handler = new CommandLineErrorHandler(TextWriter.Null, false);
+            Assert.IsFalse(MPQUtility.VerifyArchive(handler, contents, archive, tool));
+            Assert.IsTrue(handler.KillProcess);
         }
     }
 }

@@ -122,6 +122,19 @@ move/replace for each map; the batch itself is not one atomic transaction. Exist
 unrelated output files are left alone. Separate output directories are recommended
 for concurrent runs; with `--overwrite`, the last publisher of the same map wins.
 
+Packed maps are extracted again and every staged content file is checked by size
+and SHA-256 before publication. This detects silent MPQEditor failures even when
+the tool returns zero. Verification adds disk I/O and temporary storage roughly
+equal to the uncompressed map; large asset collections take longer.
+
+For source archives with unnamed entries (`File########.ext` extraction placeholders),
+WarTransfer preserves the original archive and updates only changed named files.
+These placeholders cannot safely be imported into a newly created archive. Their
+original contents and archive entries are retained and verified. Such archives are
+not resized or compacted; if an update cannot fit, verification rejects the output.
+Archive-maintained `(listfile)`, `(attributes)`, and `(signature)` records are excluded
+from content comparisons. This verification checks archive integrity, not gameplay.
+
 ## Build and test
 
 From a Visual Studio Developer PowerShell with .NET Framework 4.7.2 targeting tools:
