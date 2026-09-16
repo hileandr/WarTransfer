@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.Design;
 using System.Diagnostics;
@@ -184,29 +184,14 @@ namespace WarTransfer
 
         internal static int RunProcessCommands(IWorkflowHandler e, string programName, params string[] commands)
         {
-            int exitCode = 0;
-
-            if (commands.Length == 1)
+            foreach (string command in commands)
             {
-                exitCode = RunProcessCommand(e, programName, commands[0]);
+                if (e.KillProcess) return -1;
+                int exitCode = RunProcessCommand(e, programName, command);
+                if (exitCode != 0) return exitCode;
             }
-            else if (commands.Length > 0)
-            {
-                string fullCommandText = "/C ";
-                for (int i = 0; i < commands.Length; i++)
-                {
-                    if (i != 0)
-                        fullCommandText += "&";
-                    fullCommandText += "(" + programName + " " + commands[i] + ")";
-                }
-
-
-                exitCode = RunProcessCommand(e, "CMD.exe", fullCommandText);
-            }
-
-            return exitCode;
+            return 0;
         }
-
         internal static int RunProcessCommand(IWorkflowHandler e, string programName, string command)
         {
             Process process = null;
@@ -218,9 +203,25 @@ namespace WarTransfer
                 process.StartInfo = new ProcessStartInfo(programName, command);
                 process.StartInfo.UseShellExecute = false;
                 process.StartInfo.CreateNoWindow = true;
+                process.StartInfo.RedirectStandardOutput = true;
+                process.StartInfo.RedirectStandardError = true;
+                process.OutputDataReceived += (sender, data) => { if (data.Data != null) e.Log(LogType.Debug, data.Data); };
+                process.ErrorDataReceived += (sender, data) => { if (data.Data != null) e.Log(LogType.Debug, data.Data); };
 
                 process.Start();
-
+                process.BeginOutputReadLine();
+                process.BeginErrorReadLine();
+                while (!process.WaitForExit(100))
+                {
+                    if (e.KillProcess)
+                    {
+                        try { process.Kill(); }
+                        catch (InvalidOperationException) { } // Already exited.
+                        process.WaitForExit();
+                        return -1;
+                    }
+                }
+                // Drain redirected asynchronous output before disposing the process.
                 process.WaitForExit();
                 exitCode = process.ExitCode;
 

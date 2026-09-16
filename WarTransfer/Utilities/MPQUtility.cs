@@ -6,12 +6,12 @@ namespace WarTransfer
 {
     internal static class MPQUtility
     {
-        internal static bool VerifyMPQEditor()
+        internal static bool VerifyMPQEditor(string editorPath)
         {
-            return File.Exists("MPQEditor.exe");
+            return File.Exists(editorPath);
         }
 
-        internal static bool MapFileToMapDirectory(IWorkflowHandler e, string mapFile, string directoryPath)
+        internal static bool MapFileToMapDirectory(IWorkflowHandler e, string mapFile, string directoryPath, string editorPath)
         {
             int exitCode = 0;
 
@@ -22,7 +22,7 @@ namespace WarTransfer
                 if (!e.KillProcess)
                 {
                     // Extract the map file to our target directory
-                    exitCode = IOUtility.RunProcessCommand(e, "MPQEditor.exe", $"extract \"{mapFile}\" * \"{directoryPath}\" /fp");
+                    exitCode = IOUtility.RunProcessCommand(e, editorPath, $"extract \"{mapFile}\" * \"{directoryPath}\" /fp");
                 }
 
                 if (exitCode != 0)
@@ -36,7 +36,7 @@ namespace WarTransfer
             return false;
         }
 
-        internal static bool MapDirectoryToMapFile(IWorkflowHandler e, string mapDirectory, string filePath, int fileCount)
+        internal static bool MapDirectoryToMapFile(IWorkflowHandler e, string mapDirectory, string filePath, int fileCount, string editorPath)
         {
             int exitCode = 0;
 
@@ -50,11 +50,10 @@ namespace WarTransfer
                     string[] commands = new string[]
                     {
                         $"n \"{filePath}\" {maxFileLimit}",                     // Create a blank .w3x file
-                        $"a \"{filePath}\" \"{mapDirectory}\" /c /auto /r",     // Add our directory files to the .w3x archive
-                        $"c"                                                    // Close the .w3x archive.
+                        $"a \"{filePath}\" \"{mapDirectory}\" /c /auto /r"      // Each command closes its archive when it exits.
                     };
 
-                    exitCode = IOUtility.RunProcessCommands(e, "MPQEditor.exe", commands);
+                    exitCode = IOUtility.RunProcessCommands(e, editorPath, commands);
                 }
 
                 if (exitCode != 0)

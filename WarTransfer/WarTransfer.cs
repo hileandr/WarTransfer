@@ -17,8 +17,8 @@ namespace WarTransfer
         private WarTransferArgs m_args = null;
         private int m_totalMapContentFilesCount = 0;
 
-        private static readonly string TempSourceDirectory = Path.Combine(Path.GetTempPath(), "WarTransfer", "Source");
-        private static readonly string TempTargetDirectory = Path.Combine(Path.GetTempPath(), "WarTransfer", "Target");
+        private string TempSourceDirectory;
+        private string TempTargetDirectory;
 
         private static readonly string[] War3FilesToCopy = {
             "war3map.doo",
@@ -57,6 +57,22 @@ namespace WarTransfer
         private static readonly Regex InitBlizzardRegex = new Regex("\\s*call InitBlizzard\\(\\s*\\)\\s*");
 
         public void ExecuteDataTransfer(IWorkflowHandler e, WarTransferArgs args)
+        {
+            // Each invocation owns only this generated directory, including on failure.
+            string workspace = Path.Combine(Path.GetTempPath(), "WarTransfer", Guid.NewGuid().ToString("N"));
+            TempSourceDirectory = Path.Combine(workspace, "Source");
+            TempTargetDirectory = Path.Combine(workspace, "Target");
+            try
+            {
+                ExecuteDataTransferCore(e, args);
+            }
+            finally
+            {
+                IOUtility.DeleteDirectory(e, workspace);
+            }
+        }
+
+        private void ExecuteDataTransferCore(IWorkflowHandler e, WarTransferArgs args)
         {
             this.m_sourceMap = args.SourceMap;
             this.m_sourceDirectory = Path.GetFullPath(args.SourceDirectory);
@@ -98,8 +114,8 @@ namespace WarTransfer
 
                 if (maps != null && !e.KillProcess)
                 {
-                    e.TotalSteps = e.TotalSteps - 2;
-                    maps.Remove(m_sourceMap);
+                    if (maps.RemoveAll(path => path.Equals(m_sourceMap, StringComparison.OrdinalIgnoreCase)) > 0)
+                        e.TotalSteps -= 2;
                 }
             }
 
@@ -154,7 +170,7 @@ namespace WarTransfer
 
         private void VerifyRequirements(IWorkflowHandler e)
         {
-            if (!MPQUtility.VerifyMPQEditor())
+            if (!MPQUtility.VerifyMPQEditor(m_args.MpqEditorPath))
             {
                 e.Log(LogType.Error, "Ladik's MPQ editor not found. This is a required dependency.");
                 e.KillProcess = true;
@@ -186,8 +202,8 @@ namespace WarTransfer
 
             if (File.Exists(m_sourceMap))
             {
-                string sourceMapCopy = Path.Combine(TempSourceDirectory, Path.GetFileName(m_sourceMap));
-                success = MPQUtility.MapFileToMapDirectory(e, m_sourceMap, sourceMapCopy);
+                string sourceMapCopy = Path.Combine(TempSourceDirectory, Path.GetFileNameWithoutExtension(m_sourceMap) + ".w3x");
+                success = MPQUtility.MapFileToMapDirectory(e, m_sourceMap, sourceMapCopy, m_args.MpqEditorPath);
                 if (success)
                 {
                     m_sourceMap = sourceMapCopy;
@@ -243,7 +259,7 @@ namespace WarTransfer
 
                     e.Log(LogType.Debug, $"Copying map file \"{mapName}\" to \"{outMap}\".");
 
-                    bool success = MPQUtility.MapFileToMapDirectory(e, mapFile, outMap);
+                    bool success = MPQUtility.MapFileToMapDirectory(e, mapFile, outMap, m_args.MpqEditorPath);
 
                     if (success)
                     {
@@ -286,7 +302,7 @@ namespace WarTransfer
 
                     e.Log(LogType.Debug, $"Copying map file \"{mapName}\" to \"{outMap}\".");
 
-                    bool success = MPQUtility.MapDirectoryToMapFile(e, mapDirectory, outMap, m_totalMapContentFilesCount);
+                    bool success = MPQUtility.MapDirectoryToMapFile(e, mapDirectory, outMap, m_totalMapContentFilesCount, m_args.MpqEditorPath);
 
                     if (success)
                     {

@@ -12,6 +12,7 @@ namespace WarTransfer
         public string SourceMap { get; set; }
         public string SourceDirectory { get; set; }
         public string OutputDirectory { get; set; }
+        public string MpqEditorPath { get; set; } = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "MPQEditor.exe");
         public string VersionNumberRegex { get; set; }
         public bool TransferUnitTables { get; set; }
         public bool TransferItemTables { get; set; }

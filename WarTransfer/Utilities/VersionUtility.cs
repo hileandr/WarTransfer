@@ -14,7 +14,7 @@ namespace WarTransfer
         {
             if (!string.IsNullOrWhiteSpace(versionNumberPattern))
             {
-                s_versionRegex = new Regex(versionNumberPattern);
+                s_versionRegex = new Regex(versionNumberPattern, RegexOptions.None, TimeSpan.FromSeconds(2));
             }
             else
             {
@@ -25,6 +25,7 @@ namespace WarTransfer
         internal static void UpdateVersion(string mapName, string versionNumberPattern)
         {
             SetVersionNumberPattern(versionNumberPattern);
+            s_version = null;
 
             string version = ParseVersion(mapName, true);
             if (version.Length > 0)

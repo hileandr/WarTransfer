@@ -47,10 +47,13 @@
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Web.Extensions" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="IniFileTests.cs" />
     <Compile Include="FileTests.cs" />
+    <Compile Include="W3iCompatibilityTests.cs" />
+    <Compile Include="CommandLineTests.cs" />
     <Compile Include="VersioningTests.cs" />
     <Compile Include="TriggerFileTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -60,6 +63,10 @@
     <None Include="TestFiles\test.wtg" />
     <None Include="TestFiles\test31.w3i" />
     <None Include="TestFiles\test33.w3i" />
+    <None Include="TestFiles\test39.w3i" />
+    <None Include="TestFiles\test39_filled.w3i" />
+    <None Include="TestFiles\README.md" />
+    <None Include="TestFiles\wc3libs-license.txt" />
     <None Include="TestFiles\testX.wct" />
   </ItemGroup>
   <ItemGroup>
@@ -73,6 +80,10 @@
     <ProjectReference Include="..\WarTransfer\WarTransfer.csproj">
       <Project>{c763e981-41d0-4f40-9a60-11284a5c54cb}</Project>
       <Name>WarTransfer</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\WarTransferCL\WarTransferCL.csproj">
+      <Project>{A723A428-0CC6-4E45-97CE-AFEC0D75BE09}</Project>
+      <Name>WarTransferCL</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>

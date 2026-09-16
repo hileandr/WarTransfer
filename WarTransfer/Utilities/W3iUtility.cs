@@ -19,7 +19,7 @@ namespace WarTransfer
             W3iFile file = null;
             try
             {
-                using (FileStream stream = new FileStream(filePath, FileMode.Open))
+                using (FileStream stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read))
                 {
                     using (BinaryReader reader = new BinaryReader(stream, utf8))
                     {
@@ -41,17 +41,20 @@ namespace WarTransfer
 
             try
             {
-                using (FileStream stream = new FileStream(filePath, FileMode.Create))
+                // Finish serialization before replacing a map's metadata. A format
+                // error must not leave a truncated W3I that gets packed into output.
+                using (MemoryStream stream = new MemoryStream())
                 {
-                    using (BinaryWriter writer = new BinaryWriter(stream, utf8))
+                    using (BinaryWriter writer = new BinaryWriter(stream, utf8, true))
                     {
                         file.Serialize(writer);
                     }
+                    File.WriteAllBytes(filePath, stream.ToArray());
                 }
             }
             catch (Exception ex)
             {
-                e.ReportError($"An error occured while writing file '{filePath}': {ex.Message}", false);
+                e.ReportError($"An error occured while writing file '{filePath}': {ex.Message}", true);
             }
         }
             

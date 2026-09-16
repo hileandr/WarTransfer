@@ -57,6 +57,7 @@ namespace WarTransfer.FileTypes
         public W3iFlags Flags { get; set; }
         public char TileSet { get; set; }
         public int LoadingScreenId { get; set; }
+        public int LoadingScreenCrestRace { get; set; }
         public string LoadingScreenModel { get; set; }
         public string LoadingScreenText { get; set; }
         public string LoadingScreenTitle { get; set; }
@@ -75,6 +76,12 @@ namespace WarTransfer.FileTypes
         public byte FogColorGreen { get; set; }
         public byte FogColorBlue { get; set; }
         public byte FogColorAlpha { get; set; }
+        public int TerrainFogStyle { get; set; }
+        public int DrawTerrainFogOverSky { get; set; }
+        public float TerrainFogLinearStart { get; set; }
+        public float TerrainFogLinearEnd { get; set; }
+        public float TerrainFogMaxOpacity { get; set; }
+        public float TerrainFogHeight { get; set; }
         public FourCC WeatherId { get; set; }
         public string CustomSoundEnvironment { get; set; }
         public byte CustomLightTileset { get; set; }
@@ -88,6 +95,16 @@ namespace WarTransfer.FileTypes
         public int ForceDefaultCameraZoom { get; set; }
         public int ForceMinCameraZoom { get; set; }
         public int ForceMaxCameraZoom { get; set; }
+        public int WaterMinOpacity { get; set; }
+        public int WaterMaxOpacity { get; set; }
+        public int WaterReflectivity { get; set; }
+        public int WaterEmissivity { get; set; }
+        public int WaterEdgeSoftness { get; set; }
+        public int WaterWavesVertexDisplacement { get; set; }
+        public int WaterWavesNormalMapStrength { get; set; }
+        public int WaterOverrideColor { get; set; }
+        public int WaterEnvMapReflectivity { get; set; }
+        public int WaterUnknown { get; set; }
         public int PlayerCount { get; set; }
         public Player[] Players { get; set; }
         public int ForcesCount { get; set; }
@@ -104,12 +121,31 @@ namespace WarTransfer.FileTypes
         public static W3iFile Read(BinaryReader reader)
         {
             W3iFile file = new W3iFile();
-            file.Deserialize(reader);
+            try
+            {
+                file.Deserialize(reader);
+            }
+            catch (Exception ex) when (ex is DecoderFallbackException || ex is EndOfStreamException || ex is FormatException)
+            {
+                throw new FormatException($"Invalid war3map.w3i (format {file.FormatVersion}, byte offset {reader.BaseStream.Position}): {ex.Message}", ex);
+            }
             return file;
+        }
+
+        private void ValidateFormatVersion()
+        {
+            switch (FormatVersion)
+            {
+                case 18: case 25: case 28: case 31: case 32: case 33: case 39:
+                    return;
+                default:
+                    throw new NotSupportedException($"Unsupported war3map.w3i format version {FormatVersion}. Supported versions: 18, 25, 28, 31, 32, 33, 39.");
+            }
         }
 
         public void Serialize(BinaryWriter writer)
         {
+            ValidateFormatVersion();
             writer.Write(this.FormatVersion);
             writer.Write(this.MapVersion);
             writer.Write(this.EditorVersion);
@@ -136,6 +172,8 @@ namespace WarTransfer.FileTypes
             writer.Write((int)this.Flags);
             writer.Write((byte)this.TileSet);
             writer.Write(this.LoadingScreenId);
+            if (this.FormatVersion == 39)
+                writer.Write(this.LoadingScreenCrestRace);
 
             if (this.FormatVersion >= 25)
             {
@@ -175,6 +213,15 @@ namespace WarTransfer.FileTypes
                 writer.Write(this.FogColorGreen);
                 writer.Write(this.FogColorBlue);
                 writer.Write(this.FogColorAlpha);
+                if (this.FormatVersion == 39)
+                {
+                    writer.Write(this.TerrainFogStyle);
+                    writer.Write(this.DrawTerrainFogOverSky);
+                    writer.Write(this.TerrainFogLinearStart);
+                    writer.Write(this.TerrainFogLinearEnd);
+                    writer.Write(this.TerrainFogMaxOpacity);
+                    writer.Write(this.TerrainFogHeight);
+                }
                 this.WeatherId.Serialize(writer);
                 SerializeHelper.WriteString(writer, this.CustomSoundEnvironment);
                 writer.Write(this.CustomLightTileset);
@@ -194,11 +241,26 @@ namespace WarTransfer.FileTypes
                 }
             }
 
-            if (this.FormatVersion >= 33)
+            if (this.FormatVersion >= 32)
             {
                 writer.Write(this.ForceDefaultCameraZoom);
-                writer.Write(this.ForceMinCameraZoom);
                 writer.Write(this.ForceMaxCameraZoom);
+            }
+            if (this.FormatVersion >= 33)
+                writer.Write(this.ForceMinCameraZoom);
+
+            if (this.FormatVersion == 39)
+            {
+                writer.Write(this.WaterMinOpacity);
+                writer.Write(this.WaterMaxOpacity);
+                writer.Write(this.WaterReflectivity);
+                writer.Write(this.WaterEmissivity);
+                writer.Write(this.WaterEdgeSoftness);
+                writer.Write(this.WaterWavesVertexDisplacement);
+                writer.Write(this.WaterWavesNormalMapStrength);
+                writer.Write(this.WaterOverrideColor);
+                writer.Write(this.WaterEnvMapReflectivity);
+                writer.Write(this.WaterUnknown);
             }
 
             writer.Write(this.PlayerCount);
@@ -246,6 +308,7 @@ namespace WarTransfer.FileTypes
             StringBuilder sb = new StringBuilder(256);
 
             this.FormatVersion = reader.ReadInt32();
+            ValidateFormatVersion();
             this.MapVersion = reader.ReadInt32();
             this.EditorVersion = reader.ReadInt32();
 
@@ -271,6 +334,8 @@ namespace WarTransfer.FileTypes
             this.Flags = (W3iFlags)reader.ReadInt32();
             this.TileSet = (char)reader.ReadByte();
             this.LoadingScreenId = reader.ReadInt32();
+            if (this.FormatVersion == 39)
+                this.LoadingScreenCrestRace = reader.ReadInt32();
 
             if (this.FormatVersion >= 25)
             {
@@ -310,6 +375,15 @@ namespace WarTransfer.FileTypes
                 this.FogColorGreen = reader.ReadByte();
                 this.FogColorBlue = reader.ReadByte();
                 this.FogColorAlpha = reader.ReadByte();
+                if (this.FormatVersion == 39)
+                {
+                    this.TerrainFogStyle = reader.ReadInt32();
+                    this.DrawTerrainFogOverSky = reader.ReadInt32();
+                    this.TerrainFogLinearStart = reader.ReadSingle();
+                    this.TerrainFogLinearEnd = reader.ReadSingle();
+                    this.TerrainFogMaxOpacity = reader.ReadSingle();
+                    this.TerrainFogHeight = reader.ReadSingle();
+                }
                 this.WeatherId = FourCC.Deserialize(reader);
                 this.CustomSoundEnvironment = SerializeHelper.ReadString(reader, sb);
                 this.CustomLightTileset = reader.ReadByte();
@@ -329,11 +403,26 @@ namespace WarTransfer.FileTypes
                 }
             }
 
-            if (this.FormatVersion >= 33)
+            if (this.FormatVersion >= 32)
             {
                 this.ForceDefaultCameraZoom = reader.ReadInt32();
-                this.ForceMinCameraZoom = reader.ReadInt32();
                 this.ForceMaxCameraZoom = reader.ReadInt32();
+            }
+            if (this.FormatVersion >= 33)
+                this.ForceMinCameraZoom = reader.ReadInt32();
+
+            if (this.FormatVersion == 39)
+            {
+                this.WaterMinOpacity = reader.ReadInt32();
+                this.WaterMaxOpacity = reader.ReadInt32();
+                this.WaterReflectivity = reader.ReadInt32();
+                this.WaterEmissivity = reader.ReadInt32();
+                this.WaterEdgeSoftness = reader.ReadInt32();
+                this.WaterWavesVertexDisplacement = reader.ReadInt32();
+                this.WaterWavesNormalMapStrength = reader.ReadInt32();
+                this.WaterOverrideColor = reader.ReadInt32();
+                this.WaterEnvMapReflectivity = reader.ReadInt32();
+                this.WaterUnknown = reader.ReadInt32();
             }
 
             this.PlayerCount = SerializeHelper.ReadCount(reader, nameof(PlayerCount), 24);
@@ -394,6 +483,7 @@ namespace WarTransfer.FileTypes
         public int InternalNumber { get; set; }
         public int TypeId { get; set; }
         public int RaceId { get; set; }
+        public int HudSkin { get; set; }
         public int FixedStartLocation { get; set; }
         public string Name { get; set; }
         public float StartingPosX { get; set; }
@@ -408,6 +498,8 @@ namespace WarTransfer.FileTypes
             writer.Write(this.InternalNumber);
             writer.Write(this.TypeId);
             writer.Write(this.RaceId);
+            if (formatVersion == 39)
+                writer.Write(this.HudSkin);
             writer.Write(this.FixedStartLocation);
             SerializeHelper.WriteString(writer, this.Name);
             writer.Write(this.StartingPosX);
@@ -427,6 +519,8 @@ namespace WarTransfer.FileTypes
             this.InternalNumber = reader.ReadInt32();
             this.TypeId = reader.ReadInt32();
             this.RaceId = reader.ReadInt32();
+            if (formatVersion == 39)
+                this.HudSkin = reader.ReadInt32();
             this.FixedStartLocation = reader.ReadInt32();
             this.Name = SerializeHelper.ReadString(reader, sb);
             this.StartingPosX = reader.ReadSingle();
