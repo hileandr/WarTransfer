@@ -39,13 +39,13 @@ namespace WarTransfer.FileTypes
             int lineLength = 0;
             for (int i = 0; i < lines.Length; i++)
             {
-                if (valueStartIndex == -1 && lines[i] == "{")
+                if (valueStartIndex == -1 && lines[i].Trim() == "{")
                 {
                     valueStartIndex = i + 1;
                 }
-                else if (valueStartIndex >= i)
+                else if (valueStartIndex >= 0 && i >= valueStartIndex)
                 {
-                    if (lines[i] == "}")
+                    if (lines[i].Trim() == "}")
                     {
                         break;
                     }

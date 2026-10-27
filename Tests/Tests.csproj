@@ -52,6 +52,14 @@
   <ItemGroup>
     <Compile Include="IniFileTests.cs" />
     <Compile Include="FileTests.cs" />
+    <Compile Include="JassTransferTests.cs" />
+    <Compile Include="JassParsingTests.cs" />
+    <Compile Include="WtsTests.cs" />
+    <Compile Include="PublishingTests.cs" />
+    <Compile Include="PjassValidationTests.cs" />
+    <Compile Include="ArchiveOverlayTests.cs" />
+    <Compile Include="ScriptTypeTests.cs" />
+    <Compile Include="TransferWorkflowTests.cs" />
     <Compile Include="W3iCompatibilityTests.cs" />
     <Compile Include="CommandLineTests.cs" />
     <Compile Include="VersioningTests.cs" />

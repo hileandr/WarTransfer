@@ -1,6 +1,7 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections.Generic;
+using System.CodeDom.Compiler;
 using System.IO;
 using System.Linq;
 using System.Web.Script.Serialization;
@@ -60,11 +61,20 @@ namespace Tests
             Run(2, Args("--version-regex", "["));
         }
         [TestMethod]
-        public void MissingToolAndInvalidArchiveHaveDistinctFailureCodes()
+        public void MissingToolAndArchiveCommandFailureHaveDistinctFailureCodes()
         {
             File.Delete(editor);
             Run(3, Args("--dry-run"));
-            File.WriteAllText(editor, "not an executable");
+            // A malformed EXE can open a Windows loader dialog and hang the test host.
+            // Use a real executable with a deterministic archive-command failure instead.
+            using (var compiler = CodeDomProvider.CreateProvider("CSharp"))
+            {
+                var result = compiler.CompileAssemblyFromSource(new CompilerParameters
+                {
+                    GenerateExecutable = true, OutputAssembly = editor
+                }, "static class FailedArchiveTool { static int Main() { return 1; } }");
+                Assert.IsFalse(result.Errors.HasErrors, string.Join("\n", result.Errors.Cast<CompilerError>()));
+            }
             Run(1, Args());
             Assert.IsFalse(Directory.Exists(output));
         }

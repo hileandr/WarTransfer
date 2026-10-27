@@ -1,0 +1,20 @@
+name: Tests
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  unit:
+    name: Windows unit tests (archive and game tools excluded)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: microsoft/setup-msbuild@v2
+      - uses: NuGet/setup-nuget@v2
+      - run: nuget restore Tests/packages.config -PackagesDirectory packages -NonInteractive
+      - shell: powershell
+        run: ./Tests/Run.ps1 -UnitOnly -Configuration Release
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: TestResults/*.trx

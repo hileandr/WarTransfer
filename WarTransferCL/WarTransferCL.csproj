@@ -22,6 +22,7 @@
     <Compile Include="CommandLineErrorHandler.cs" />
     <Compile Include="CliOptions.cs" />
     <Compile Include="Program.cs" />
+    <Compile Include="OutputPublisher.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <None Include="App.config" />
     <None Include="README.md" />

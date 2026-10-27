@@ -194,6 +194,7 @@ namespace WarTransfer
         }
         internal static int RunProcessCommand(IWorkflowHandler e, string programName, string command)
         {
+            var timer = Stopwatch.StartNew();
             Process process = null;
             int exitCode = 0;
 
@@ -234,6 +235,7 @@ namespace WarTransfer
             }
             finally
             {
+                e.Log(LogType.Debug, $"Process duration {timer.Elapsed.TotalMilliseconds:F0} ms: {Path.GetFileName(programName)} {command}");
                 if (process != null)
                 {
                     process.Dispose();

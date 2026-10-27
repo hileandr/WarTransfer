@@ -11,10 +11,10 @@ namespace WarTransfer
         private static readonly Regex UnknownName = new Regex(@"^File[0-9]{8}\.[^\\/]+$", RegexOptions.IgnoreCase);
         internal static bool VerifyMPQEditor(string editorPath) => File.Exists(editorPath);
 
-        internal static bool MapFileToMapDirectory(IWorkflowHandler e, string mapFile, string directoryPath, string editorPath)
+        internal static bool MapFileToMapDirectory(IWorkflowHandler e, string mapFile, string directoryPath, string editorPath, string fileMask = "*")
         {
             if (e.KillProcess || !IOUtility.DeleteDirectory(e, directoryPath)) return false;
-            int exitCode = IOUtility.RunProcessCommand(e, editorPath, $"extract \"{mapFile}\" * \"{directoryPath}\" /fp");
+            int exitCode = IOUtility.RunProcessCommand(e, editorPath, $"extract \"{mapFile}\" {fileMask} \"{directoryPath}\" /fp");
             if (exitCode != 0)
             {
                 e.ReportError($"Error extracting map '{mapFile}'. MPQEditor exit code {exitCode}.", true);
@@ -33,13 +33,23 @@ namespace WarTransfer
                 if (e.KillProcess) return false;
                 string root = Path.GetFullPath(mapDirectory).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
                 string[] files = Directory.GetFiles(root, "*", SearchOption.AllDirectories);
+                if (sourceDirectory != null) sourceDirectory = Path.GetFullPath(sourceDirectory).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
                 bool hasUnknownNames = files.Any(f => UnknownName.IsMatch(f.Substring(root.Length)));
+                // Updating existing named entries reuses compressed source assets. Fall
+                // back to a fresh archive when entries are added/removed, since the
+                // source's hash table may have no free slots. Never resize unnamed maps.
+                bool canOverlay = sourceArchive != null && sourceDirectory != null && IsBareMpq(sourceArchive) &&
+                    files.All(f => IsArchiveMetadata(f.Substring(root.Length)) ||
+                        File.Exists(Path.Combine(sourceDirectory, f.Substring(root.Length)))) &&
+                    Directory.EnumerateFiles(sourceDirectory, "*", SearchOption.AllDirectories).All(f =>
+                        IsArchiveMetadata(f.Substring(sourceDirectory.TrimEnd(Path.DirectorySeparatorChar).Length + 1)) ||
+                        File.Exists(Path.Combine(root, f.Substring(sourceDirectory.TrimEnd(Path.DirectorySeparatorChar).Length + 1))));
                 filePath = Path.GetFullPath(filePath);
                 Directory.CreateDirectory(Path.GetDirectoryName(filePath));
                 Directory.CreateDirectory(work);
                 candidate = Path.Combine(Path.GetDirectoryName(filePath), ".wartransfer-" + Guid.NewGuid().ToString("N") + ".w3x");
                 int exitCode;
-                if (hasUnknownNames)
+                if (hasUnknownNames || canOverlay)
                 {
                     // File########.ext is an extraction placeholder, not an original
                     // archive path. Rebuilding loses its hashes and can stop MPQEditor
@@ -65,7 +75,7 @@ namespace WarTransfer
                         changes++;
                     }
                     // Do not compact or resize: either can invalidate unnamed entries.
-                    e.Log(LogType.UserInfo, $"Preserving unnamed source assets; updating {changes} changed files.");
+                    e.Log(LogType.UserInfo, $"Preserving compressed source assets; updating {changes} changed files.");
                     exitCode = changes == 0 ? 0 : IOUtility.RunProcessCommand(e, editorPath, $"a \"{candidate}\" \"{overlay}\" /c /r");
                 }
                 else
@@ -129,6 +139,16 @@ namespace WarTransfer
 
         private static bool IsArchiveMetadata(string path) => path.Equals("(listfile)", StringComparison.OrdinalIgnoreCase)
             || path.Equals("(attributes)", StringComparison.OrdinalIgnoreCase) || path.Equals("(signature)", StringComparison.OrdinalIgnoreCase);
+
+        private static bool IsBareMpq(string path)
+        {
+            // Reusing a named map's HM3W/user-data preamble could retain stale map
+            // names/player counts. Keep its existing rebuild behavior until header
+            // rewriting has coverage from real editor-created map archives.
+            using (var stream = File.OpenRead(path))
+            using (var reader = new BinaryReader(stream))
+                return stream.Length >= 4 && reader.ReadUInt32() == 0x1A51504D;
+        }
 
         private static bool SameContents(string first, string second)
         {

@@ -83,24 +83,7 @@ Dry-run validates the plan, not map contents or in-game compatibility.
                     finally { options.Transfer.OutputDirectory = outputDirectory; }
                     if (!handler.KillProcess)
                     {
-                        // Check the whole batch before publishing any file.
-                        foreach (string path in options.Outputs)
-                            if (!File.Exists(Path.Combine(staging, Path.GetFileName(path))))
-                                throw new IOException("Transfer did not produce expected output: " + path);
-                        Directory.CreateDirectory(outputDirectory);
-                        foreach (string path in options.Outputs)
-                        {
-                            if (handler.KillProcess) break;
-                            string pending = Path.Combine(outputDirectory, ".wartransfer-" + Guid.NewGuid().ToString("N") + ".tmp");
-                            try
-                            {
-                                File.Copy(Path.Combine(staging, Path.GetFileName(path)), pending);
-                                if (options.Overwrite && File.Exists(path)) File.Replace(pending, path, null);
-                                else File.Move(pending, path);
-                                published.Add(path);
-                            }
-                            finally { if (File.Exists(pending)) File.Delete(pending); }
-                        }
+                        OutputPublisher.Publish(options.Outputs, staging, options.Overwrite, handler, published);
                     }
                 }
             }

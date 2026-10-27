@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -18,36 +18,27 @@ namespace WarTransfer
             WtsFile wts = new WtsFile();
             string[] lines = ReadLinesFromFile(e, filePath);
 
-            if (!e.KillProcess)
+            if (e.KillProcess) return wts;
+            try
             {
-                int currentKey = -1;
-                int startLine = 0;
                 for (int i = 0; i < lines.Length; i++)
                 {
-                    string line = lines[i];
-                    bool isLastLine = (i == lines.Length - 1);
-
-                    if (IsKeyLine(line) || (currentKey != -1 && isLastLine))
-                    {
-                        if (currentKey != -1)
-                        {
-                            int count = i - startLine;
-                            if (isLastLine)
-                                count++;
-
-                            string[] segment = new string[count];
-                            for (int j = 0; j < count; j++)
-                            {
-                                segment[j] = lines[startLine + j];
-                            }
-
-                            wts.FileMap.Add(currentKey, segment);
-                        }
-
-                        currentKey = ParseKey(line);
-                        startLine = i;
-                    }
+                    string line = lines[i].Trim();
+                    if (line.Length == 0 || line.StartsWith("//")) continue;
+                    int key = ParseKey(line);
+                    if (!IsKeyLine(line) || key < 0) throw new FormatException("Invalid WTS header: " + line);
+                    if (wts.FileMap.ContainsKey(key)) throw new FormatException("Duplicate WTS string: " + key);
+                    int start = i;
+                    while (++i < lines.Length && (lines[i].Trim().Length == 0 || lines[i].TrimStart().StartsWith("//"))) { }
+                    if (i >= lines.Length || lines[i].Trim() != "{") throw new FormatException("Missing opening brace for WTS string " + key);
+                    while (++i < lines.Length && lines[i].Trim() != "}") { }
+                    if (i >= lines.Length) throw new FormatException("Missing closing brace for WTS string " + key);
+                    wts.FileMap.Add(key, lines.Skip(start).Take(i - start + 1).Concat(new[] { "" }).ToArray());
                 }
+            }
+            catch (FormatException ex)
+            {
+                e.ReportError("Invalid WTS file '" + filePath + "': " + ex.Message, true);
             }
 
             return wts;
@@ -55,11 +46,6 @@ namespace WarTransfer
 
         public static void WriteFile(string outputPath, WtsFile wts)
         {
-            if (File.Exists(outputPath))
-            {
-                File.Delete(outputPath);
-            }
-
             File.WriteAllLines(outputPath, wts.GetLines(), Encoding.UTF8);
         }
 
@@ -145,6 +131,7 @@ namespace WarTransfer
             if (StringUtility.IsRef(targetValue))
             {
                 int refKey = StringUtility.ExtractRefKey(targetValue);
+                if (!oldWts.FileMap.ContainsKey(refKey)) throw new FormatException("Missing string reference '" + targetValue + "' in terrain strings.");
                 refKey = AddBlock(sourceWts, oldWts.GetLines(refKey));
 
                 return StringUtility.MakeRef(refKey);
@@ -181,6 +168,11 @@ namespace WarTransfer
             if (StringUtility.IsRef(desiredValue))
             {
                 int valueLocation = StringUtility.ExtractRefKey(desiredValue);
+                if (!sourceWts.FileMap.ContainsKey(valueLocation))
+                {
+                    e.ReportError("Missing string reference '" + desiredValue + "' in terrain strings.", true);
+                    return oldValue;
+                }
                 int destination;
 
                 if (StringUtility.IsRef(oldValue))
@@ -222,6 +214,11 @@ namespace WarTransfer
                 if (StringUtility.IsRef(oldValue))
                 {
                     int refKey = StringUtility.ExtractRefKey(oldValue);
+                    if (!destinationWts.FileMap.ContainsKey(refKey))
+                    {
+                        e.ReportError("Missing string reference '" + oldValue + "' in source strings.", true);
+                        return oldValue;
+                    }
                     ReplaceBlock(destinationWts, desiredValue, refKey);
 
                     result = StringUtility.MakeRef(refKey);
@@ -233,34 +230,19 @@ namespace WarTransfer
 
         public static void RemapStrRef<T>(IWorkflowHandler e, T source, T target, WtsFile sourceWts, WtsFile destinationWts, Expression<Func<T, string>> stringSelector)
         {
-            var selector = stringSelector.Compile();
-
-            string sourceValue = selector(source);
-            string targetValue = selector(target);
+            var prop = ReflectionUtility.GetProperty(stringSelector);
+            string sourceValue = (string)prop.GetValue(source);
+            string targetValue = (string)prop.GetValue(target);
 
             object newValue = RemapStrRef(e,sourceWts, destinationWts, sourceValue, targetValue);
-
-            var prop = ReflectionUtility.GetProperty(stringSelector);
 
             prop.SetValue(target, newValue);
         }
 
         private static int GetNextKey(WtsFile file)
         {
-            var keys = file.FileMap.Keys.OrderBy(x => x);
             int nextKey = 0;
-
-            foreach (int key in keys)
-            {
-                if (key != nextKey)
-                {
-                    break;
-                }
-
-                nextKey = key + 1;
-            }
-
-
+            while (file.FileMap.ContainsKey(nextKey)) nextKey++;
             return nextKey;
         }
 

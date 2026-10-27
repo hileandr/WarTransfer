@@ -153,6 +153,30 @@ namespace Tests
         }
 
         [TestMethod]
+        public void EveryTruncatedPrefixOfVersion39IsRejected()
+        {
+            var bytes = File.ReadAllBytes("../../TestFiles/test39.w3i");
+            for (int length = 0; length < bytes.Length; length++)
+            {
+                var prefix = new byte[length];
+                Array.Copy(bytes, prefix, length);
+                Assert.ThrowsException<FormatException>(() => Read(prefix), "Accepted truncated length " + length);
+            }
+        }
+
+        [DataTestMethod]
+        [DataRow(-1)]
+        [DataRow(int.MaxValue)]
+        public void InvalidCollectionCountsAreRejectedBeforeAllocation(int count)
+        {
+            // The independently constructed layout ends with six collection counts.
+            var bytes = CameraFixture(33);
+            Array.Copy(BitConverter.GetBytes(count), 0, bytes, bytes.Length - 24, 4);
+            var ex = Assert.ThrowsException<FormatException>(() => Read(bytes));
+            StringAssert.Contains(ex.Message, "PlayerCount");
+        }
+
+        [TestMethod]
         public void ProductionFileIoPreservesVersion39AndStopsOnWriteFailure()
         {
             var path = Path.GetTempFileName();

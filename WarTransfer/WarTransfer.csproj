@@ -46,6 +46,9 @@
     <Compile Include="FileTypes\WtsFile.cs" />
     <Compile Include="WarTransfer.cs" />
     <Compile Include="WarTransferArgs.cs" />
+    <Compile Include="Scripts\IMapScriptMerger.cs" />
+    <Compile Include="Scripts\JassScriptMerger.cs" />
+    <Compile Include="Scripts\MapScripts.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Types\FourCC.cs" />
     <Compile Include="Types\InlineString.cs" />

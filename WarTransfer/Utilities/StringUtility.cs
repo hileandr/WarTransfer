@@ -63,31 +63,83 @@ namespace WarTransfer
 
         public static InlineString FindInlineString(string input, int startIndex)
         {
-            int inlineStart = -1;
             for (int i = startIndex; i < input.Length; i++)
             {
-                char c = input[i];
-                if (c == '"')
+                if (input[i] == '/' && i + 1 < input.Length && input[i + 1] == '/') return null;
+                if (input[i] == '\'')
                 {
-                    if (inlineStart == -1)
-                    {
-                        inlineStart = i + 1;
-                    }
-                    else
-                    {
-                        int length = i - inlineStart;
-                        if (length > 0)
-                        {
-                            return new InlineString(inlineStart, input.Substring(inlineStart, length));
-                        }
-
-                        inlineStart = -1;
-                    }
+                    i = LiteralEnd(input, i, '\'');
+                }
+                else if (input[i] == '"')
+                {
+                    int end = LiteralEnd(input, i, '"');
+                    return new InlineString(i + 1, input.Substring(i + 1, end - i - 1));
                 }
             }
-
             return null;
         }
+
+        private static int LiteralEnd(string input, int start, char quote)
+        {
+            for (int i = start + 1; i < input.Length; i++)
+            {
+                if (input[i] == '\\') { i++; continue; }
+                if (input[i] == quote) return i;
+            }
+            throw new FormatException("Unterminated JASS literal: " + input.Trim());
+        }
+
+        // Keep token positions stable while excluding literals and trailing comments.
+        internal static string CodeOnly(string input)
+        {
+            var result = input.ToCharArray();
+            for (int i = 0; i < input.Length; i++)
+            {
+                if (input[i] == '/' && i + 1 < input.Length && input[i + 1] == '/')
+                {
+                    for (int j = i; j < result.Length; j++) result[j] = ' ';
+                    break;
+                }
+                if (input[i] == '"' || input[i] == '\'')
+                {
+                    int end = LiteralEnd(input, i, input[i]);
+                    for (int j = i; j <= end; j++) result[j] = ' ';
+                    i = end;
+                }
+            }
+            return new string(result);
+        }
+
+        internal static string StringContext(string input)
+        {
+            return new string(CodeOnly(input).Where(c => !char.IsWhiteSpace(c)).ToArray());
+        }
+
+        internal static string DecodeJassString(string value)
+        {
+            var result = new StringBuilder();
+            for (int i = 0; i < value.Length; i++)
+            {
+                char c = value[i];
+                if (c == '\\' && i + 1 < value.Length)
+                {
+                    c = value[++i];
+                    switch (c)
+                    {
+                        case 'n': c = '\n'; break;
+                        case 'r': c = '\r'; break;
+                        case 't': c = '\t'; break;
+                        case '\\': case '"': break;
+                        default: result.Append('\\'); break;
+                    }
+                }
+                result.Append(c);
+            }
+            return result.ToString();
+        }
+
+        internal static string EncodeJassString(string value) => value.Replace("\\", "\\\\")
+            .Replace("\"", "\\\"").Replace("\r", "\\r").Replace("\n", "\\n").Replace("\t", "\\t");
 
         public static string SubstringUntil(string s, char c)
         {

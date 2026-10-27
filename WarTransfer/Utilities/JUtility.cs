@@ -66,15 +66,15 @@ namespace WarTransfer
             {
                 return NodeType.Comment;
             }
-            else if (trimmed.StartsWith(GLOBALS_ID))
+            else if (Regex.IsMatch(trimmed, @"^globals\b"))
             {
                 return NodeType.Globals;
             }
-            else if (trimmed.StartsWith(FUNCTION_INTERFACE_ID))
+            else if (Regex.IsMatch(trimmed, @"^function\s+interface\b"))
             {
                 return NodeType.FunctionInterface;
             }
-            else if (trimmed.StartsWith(FUNCTION_ID))
+            else if (Regex.IsMatch(trimmed, @"^function\b"))
             {
                 return NodeType.Function;
             }
@@ -86,25 +86,9 @@ namespace WarTransfer
 
         public static string GetFunctionName(string line)
         {
-            string trimmed = line.Trim();
-            if (trimmed.StartsWith(FUNCTION_ID))
-            {
-                string result = "";
-                int i = FUNCTION_ID.Length + 1;
-                for (; i < trimmed.Length; i++)
-                {
-                    if (char.IsWhiteSpace(trimmed[i]))
-                    {
-                        break;
-                    }
-
-                    result += trimmed[i];
-                }
-
-                return result;
-            }
-
-            return null;
+            var match = Regex.Match(StringUtility.CodeOnly(line), @"^\s*function\s+([A-Za-z_][A-Za-z_0-9]*)\s+takes\b.*\breturns\s+[A-Za-z_][A-Za-z_0-9]*\s*$");
+            if (!match.Success) throw new FormatException("Invalid JASS function declaration: " + line.Trim());
+            return match.Groups[1].Value;
         }
 
         //public static T FindNode<T>(JFileNode root) where T : JFileNode
@@ -229,9 +213,9 @@ namespace WarTransfer
 
         public static bool AddFunctionBeforeUse(JFileNode root, JFileFunctionNode function)
         {
-            Regex funcUsedRegex = new Regex(string.Format(FUNC_USED_PATTERN, function.FunctionName), RegexOptions.Compiled);
+            Regex funcUsedRegex = new Regex(@"\b(?:call\s+|function\s+)" + Regex.Escape(function.FunctionName) + @"\b");
 
-            JFileTextNode firstCall = root.Find<JFileTextNode>(x => funcUsedRegex.IsMatch(x.TextValue));
+            JFileTextNode firstCall = root.Find<JFileTextNode>(x => x.NodeType == NodeType.Text && funcUsedRegex.IsMatch(StringUtility.CodeOnly(x.TextValue)));
 
             if (firstCall != null && firstCall.Parent != null && firstCall.Parent.NodeType == NodeType.Function)
             {
@@ -489,11 +473,12 @@ namespace WarTransfer
 
         public static void FindInlineStrings(JFileNode node, List<JFileInlineString> outResult)
         {
-            if (node is JFileTextNode textNode)
+            if (node is JFileTextNode textNode && node.NodeType == NodeType.Text)
             {
                 string nodeValue = textNode.TextValue;
                 string context = null;
                 int startIndex = 0;
+                int stringIndex = 0;
                 InlineString iString;
                 do
                 {
@@ -503,10 +488,10 @@ namespace WarTransfer
                         int length = iString.Value.Length;
                         if (context == null)
                         {
-                            context = BuildInlineStringContext(nodeValue);
+                            context = StringUtility.StringContext(nodeValue);
                         }
 
-                        outResult.Add(new JFileInlineString(textNode, context, iString));
+                        outResult.Add(new JFileInlineString(textNode, context + "#" + stringIndex++, iString));
 
                         startIndex = iString.StartIndex + length + 1;
                     }

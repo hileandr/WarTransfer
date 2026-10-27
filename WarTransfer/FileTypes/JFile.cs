@@ -52,13 +52,20 @@ namespace WarTransfer.FileTypes
 
             while (line != null)
             {
+                string code = StringUtility.CodeOnly(line).Trim();
+                if (code == "endfunction" || code == "endglobals")
+                    throw new FormatException("Unexpected JASS terminator: " + code);
                 JFileNode node = JUtility.ParseNode(this, line);
+                if (node.NodeType == NodeType.Globals && Root.Find<JFileGlobalsNode>() != null)
+                    throw new FormatException("Duplicate JASS globals block.");
                 Root.AddChild(node);
                 node.Deserialize(this, reader);
 
                 if (node.NodeType == NodeType.Function)
                 {
                     JFileFunctionNode function = (JFileFunctionNode)node;
+                    if (Functions.ContainsKey(function.FunctionName))
+                        throw new FormatException("Duplicate JASS function: " + function.FunctionName);
                     this.Functions.Add(function.FunctionName, function);
                 }
 
@@ -303,13 +310,9 @@ namespace WarTransfer.FileTypes
         public JFileNode Clone(JFile targetDocument)
         {
             JFileNode clone = Copy(targetDocument);
-            if (clone.Children != null)
+            if (Children != null)
             {
-                for (int c = 0; c < clone.Children.Count; c++)
-                {
-                    clone.Children[c] = clone.Children[c].Clone(targetDocument);
-                    clone.Children[c].Parent = clone;
-                }
+                foreach (var child in Children) clone.AddChild(child.Clone(targetDocument));
             }
 
             return clone;
@@ -454,12 +457,12 @@ namespace WarTransfer.FileTypes
                 for (int i = 0; i < text.Length; i++)
                 {
                     char c = text[i];
-                    if (c == ' ')
+                    if (char.IsWhiteSpace(c))
                     {
                         whiteSpaceCounter++;
                         if (whiteSpaceCounter <= 1)
                         {
-                            newText += c;
+                            newText += ' ';
                         }
                     }
                     else
@@ -518,17 +521,20 @@ namespace WarTransfer.FileTypes
             string line = reader.ReadLine();
             while (line != null)
             {
+                string code = StringUtility.CodeOnly(line).Trim();
                 JFileNode child = JUtility.ParseNode(document, line);
-                child.Deserialize(document, reader);
+                if (child.NodeType == NodeType.Function || child.NodeType == NodeType.Globals || code == "endfunction")
+                    throw new FormatException("Missing endglobals before: " + line.Trim());
                 AddChild(child);
 
-                if (line.TrimStart().StartsWith($"end{JUtility.GLOBALS_ID}"))
+                if (code == "endglobals")
                 {
-                    break;
+                    return;
                 }
 
                 line = reader.ReadLine();
             }
+            throw new FormatException("Missing endglobals in JASS script.");
         }
 
         public override string ToString()
@@ -572,17 +578,20 @@ namespace WarTransfer.FileTypes
             string line = reader.ReadLine();
             while (line != null)
             {
+                string code = StringUtility.CodeOnly(line).Trim();
                 JFileNode child = JUtility.ParseNode(document, line);
-                child.Deserialize(document, reader);
+                if (child.NodeType == NodeType.Function || child.NodeType == NodeType.Globals || code == "endglobals")
+                    throw new FormatException("Missing endfunction for '" + FunctionName + "' before: " + line.Trim());
                 AddChild(child);
 
-                if (line.TrimStart().StartsWith($"end{JUtility.FUNCTION_ID}"))
+                if (code == "endfunction")
                 {
-                    break;
+                    return;
                 }
 
                 line = reader.ReadLine();
             }
+            throw new FormatException("Missing endfunction for JASS function '" + FunctionName + "'.");
         }
 
         public override string ToString()
