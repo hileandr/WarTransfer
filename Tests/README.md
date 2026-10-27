@@ -58,6 +58,42 @@ The new suites cover:
 The maps constructed by these tests contain synthetic scripts and data markers;
 they test transfer behavior and archive preservation, not Warcraft III gameplay.
 
+# Private real-map acceptance
+
+After building the Debug CLI, run the separate acceptance harness against local
+maps and a directory of previous outputs:
+
+```powershell
+./Tests/RealMaps.ps1 -SourceMap 'D:\Maps\Data1.09beta6.w3x' `
+    -Targets 'D:\Maps\Terrains' -KnownGood 'D:\Maps\PreviousOutputs'
+```
+
+This keeps destination cameras, regions, and random tables. It accepts archived
+and extracted-folder destinations, packs folders into private copies, and gives
+each case an alias so older versions of the same terrain are tested separately.
+The CLI itself still requires archive destinations. Known-good filenames are
+matched after removing the version; `-VersionRegex` defaults to
+`\d+\.\d+(?:beta\d+)?`. Override `-MpqEditor`, `-Pjass`, or `-JassLibraries` for
+other local installations. The libraries directory must contain `common.j` and
+`blizzard.j`.
+
+All outputs, extracted contents, logs, and JSON reports stay under ignored
+`TestResults/rm-*`. Input SHA-256 snapshots are checked after the run. Every
+output is checked by pjass, source assets and gameplay functions are compared
+with the source, and terrain files and resolved metadata are compared with the
+destination. Script and metadata WTS references must resolve. The script fails
+if these invariants fail. Compiler results for
+originals and historical outputs are also recorded; historical differences are
+reported separately because a newer source or terrain need not reproduce an old
+output byte for byte. These checks do not replace reopening maps in World Editor
+or playing them.
+
+Use `-RunDirectory` with an existing run to reuse generated outputs and repeat
+the audits, only while its inputs and CLI build remain unchanged. Keep scratch
+paths short: older MPQEditor versions can return success after omitting files
+when a native path is too long. Private maps and their extracted contents should
+not be committed.
+
 # Script boundary
 
 The shared engine calls `MapScripts.Open` on the extracted source and all

@@ -64,17 +64,63 @@ The benchmark has no timing assertions in the test suite.
    state to become invocation-local, plus independent handlers and documents.
    Disk contention can erase gains; benchmark on the actual storage first.
 
+# Real-map acceptance measurements
+
+A local Spellbringers corpus was transferred with destination cameras, regions,
+and random tables retained: 16 archived destinations and six extracted-folder
+destinations packed into private archives. Duplicate terrain versions remained
+separate cases. All 22 outputs passed pjass, source-asset and gameplay-function
+preservation, destination-terrain preservation, and resolved metadata checks.
+The destinations cover W3I formats 31 (20 maps) and 33 (two maps), with two to
+eight players. SHA-256 checks found no changes to the 4,925 original files.
+
+| Batch | Transfer wall time | MPQEditor time | Of which output verification |
+| --- | ---: | ---: | ---: |
+| 16 archived destinations | 267.75 s | 93.85 s | 64.84 s |
+| Six packed-folder destinations | 84.72 s | 29.89 s | 18.27 s |
+
+These are two batches, each including source extraction. Folder preparation and
+the separate acceptance audit are excluded. Wall times were recorded by the
+native process wrapper. This is an acceptance workload without a
+before/after baseline or repeated timing samples, not a speedup measurement.
+
+MPQEditor consumed about 35% of the combined transfer time; verification was
+about two thirds of that native time. These durations include archive I/O and
+decompression. The remaining time needs profiling across directory copies,
+file enumeration/hashing, parsing/merging, publication, and cleanup. Avoiding
+repeated copies and hashes of unchanged source assets is a useful next target;
+removing native process launches alone does not address all the measured work.
+Keep full content verification when changing either path.
+
+All 18 historical outputs also passed pjass. Resolved metadata matched them in
+18 of the 22 cases. Four terrain versions had expected metadata differences
+while still matching their supplied destinations. The source postdates those
+historical outputs and has script/object/string changes, so historical archive
+byte equality is not an acceptance requirement. `RealMaps.ps1` records those
+differences separately. Private maps, extracted data, and detailed reports remain
+under ignored `TestResults`; see [the acceptance harness instructions](README.md).
+
+Disposable copies of King of the Hill, Fighting Spirit, and Ivory Gardens also
+opened, saved, and reopened in World Editor. All three editor-saved scripts
+passed pjass. An editor-launched King of the Hill test reached creed selection;
+choosing Order spawned a selectable Citadel and five workers. This was the
+editor's temporary test map with one human and one computer. Direct gameplay
+checks of the untouched generated archives remain pending. Foreground tests
+were stopped because they interrupted the user's desktop; further interactive
+checks need an isolated desktop/session or VM. Audible sound, other creeds and
+spells, combat, long-running play, and multiplayer have not been checked.
+
 # Validation that needs your maps or environment
 
-- Paths to one representative source map and two or three terrain maps you
-  actually use together, preferably with a known-good generated output. No upload
-  is needed for files already on this machine. Identify the intended pairing.
-- At least one asset-heavy source and a realistic target batch for performance
-  measurements, plus the usual storage location (local SSD, HDD, network, synced).
+- Lua source/destination maps and an intended merged result for the future Lua
+  implementation. The supplied real-map corpus exercises JASS transfers.
+- Storage characteristics (local SSD, HDD, network, synced) for a controlled
+  performance comparison; the real-map measurements above have no old-version
+  baseline.
 - Older supported editor formats (especially 18/25/28), maps with unnamed or
   encrypted imports, and camera/region/random-table combinations you depend on.
   Synthetic fixtures cover mechanics, but cannot establish your intended gameplay.
-- World Editor reopen/save and in-game smoke checks on generated maps: initialization,
+- Complete in-game smoke checks on generated maps: initialization,
   player slots, placed units, cameras, regions, random tables, sounds, and triggers.
 - If full integration should run in hosted CI: a Windows runner with MPQEditor and
   the game/compiler libraries, or an approved way to provision those dependencies.
@@ -82,4 +128,5 @@ The benchmark has no timing assertions in the test suite.
 
 The local cached 1.5 MB compiled map script passed a lossless text round trip
 (apart from newline normalization) and pjass with its local libraries. That is
-useful parser coverage, not an end-to-end transfer test of a real map archive.
+additional parser coverage; the real-map acceptance checks above exercise full
+archive transfers but still do not establish in-game behavior.
