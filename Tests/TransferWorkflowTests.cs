@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Web.Script.Serialization;
+using System.Diagnostics;
 using WarTransfer;
 using WarTransfer.FileTypes;
 using WarTransferCL;
@@ -77,8 +78,11 @@ namespace Tests
                 "function config takes nothing returns nothing\n    call SetMapName(\"TRIGSTR_001\")\n    call SetPlayers(" + (isSource ? 2 : playerCount) + ")\nendfunction\n" +
                 "function main takes nothing returns nothing\n    call " + (isSource ? "SourceTerrain" : "DestinationTerrain") + "()\n" +
                 "    call InitBlizzard()\n    call Gameplay()\nendfunction\n";
-            File.WriteAllText(Path.Combine(contents, type == 1 ? "war3map.lua" : "war3map.j"),
-                type == 1 ? "function main() end" : scriptOverride ?? script);
+            if (type == 1)
+                script = "function Gameplay() " + (isSource ? "SourceGameplay" : "TerrainGameplay") + "() end\n" +
+                    "function config() SetMapName('TRIGSTR_001'); SetPlayers(" + (isSource ? 2 : playerCount) + ") end\n" +
+                    "function main() " + (isSource ? "SourceTerrain" : "DestinationTerrain") + "(); InitBlizzard(); Gameplay() end\n";
+            File.WriteAllText(Path.Combine(contents, type == 1 ? "war3map.lua" : "war3map.j"), scriptOverride ?? script);
             Assert.IsTrue(MPQUtility.MapDirectoryToMapFile(packHandler, contents, archive, editor),
                 string.Join("\n", packHandler.Errors));
             return archive;
@@ -91,18 +95,22 @@ namespace Tests
         };
 
         [DataTestMethod]
-        [DataRow(false, false, false, false)]
-        [DataRow(true, false, true, false)]
-        [DataRow(false, true, false, true)]
-        [DataRow(true, true, true, true)]
+        [DataRow(false, false, false, false, 0)]
+        [DataRow(true, false, true, false, 0)]
+        [DataRow(false, true, false, true, 0)]
+        [DataRow(true, true, true, true, 0)]
+        [DataRow(false, false, false, false, 1)]
+        [DataRow(true, false, true, false, 1)]
+        [DataRow(false, true, false, true, 1)]
+        [DataRow(true, true, true, true, 1)]
         public void TransfersBatchPreservingGameplayTerrainOptionsMetadataStringsAndInputs(
-            bool cameras, bool regions, bool unitTables, bool itemTables)
+            bool cameras, bool regions, bool unitTables, bool itemTables, int scriptType)
         {
-            PackMap(source, true);
+            PackMap(source, true, scriptType);
             var originals = new Dictionary<string, byte[]> { { source, File.ReadAllBytes(source) } };
             for (int i = 0; i < 2; i++)
             {
-                string path = PackMap(Path.Combine(targets, "terrain" + i + " 1.0.w3m"), false, playerCount: 4 + i);
+                string path = PackMap(Path.Combine(targets, "terrain" + i + " 1.0.w3m"), false, scriptType, playerCount: 4 + i);
                 originals.Add(path, File.ReadAllBytes(path));
             }
             var args = Args();
@@ -121,15 +129,15 @@ namespace Tests
                 Assert.AreEqual("terrain war3mapUnits.doo", File.ReadAllText(Path.Combine(extracted, "war3mapUnits.doo")));
                 Assert.AreEqual((cameras ? "source" : "terrain") + " war3map.w3c", File.ReadAllText(Path.Combine(extracted, "war3map.w3c")));
                 Assert.AreEqual((regions ? "source" : "terrain") + " war3map.w3r", File.ReadAllText(Path.Combine(extracted, "war3map.w3r")));
-                string script = File.ReadAllText(Path.Combine(extracted, "war3map.j"));
-                StringAssert.Contains(script, "call SourceGameplay()");
-                StringAssert.Contains(script, "call DestinationTerrain()");
-                StringAssert.Contains(script, "call SetPlayers(" + (4 + i) + ")");
-                Assert.IsFalse(script.Contains("call SourceTerrain()"));
-                Assert.IsFalse(script.Contains("call TerrainGameplay()"));
+                string script = File.ReadAllText(Path.Combine(extracted, scriptType == 1 ? "war3map.lua" : "war3map.j"));
+                StringAssert.Contains(script, "SourceGameplay()");
+                StringAssert.Contains(script, "DestinationTerrain()");
+                StringAssert.Contains(script, "SetPlayers(" + (4 + i) + ")");
+                Assert.IsFalse(script.Contains("SourceTerrain()"));
+                Assert.IsFalse(script.Contains("TerrainGameplay()"));
                 var info = W3iUtility.ReadFile(handler, Path.Combine(extracted, "war3map.w3i"));
                 Assert.AreEqual(39, info.FormatVersion);
-                Assert.AreEqual(0, info.ScriptTypeId);
+                Assert.AreEqual(scriptType, info.ScriptTypeId);
                 Assert.AreEqual(64, info.PlayableWidth);
                 Assert.AreEqual(1, info.GameDataSet);
                 Assert.AreEqual(3, info.SupportedModes);
@@ -149,10 +157,10 @@ namespace Tests
         [DataTestMethod]
         [DataRow(true)]
         [DataRow(false)]
-        public void LuaSourceOrDestinationStopsWholeBatchBeforeAnyMerging(bool luaSource)
+        public void MixedLanguagesStopWholeBatchBeforeAnyMerging(bool luaSource)
         {
             PackMap(source, true, luaSource ? 1 : 0);
-            PackMap(Path.Combine(targets, "first 1.0.w3x"), false);
+            PackMap(Path.Combine(targets, "first 1.0.w3x"), false, luaSource ? 1 : 0);
             PackMap(Path.Combine(targets, "last 1.0.w3x"), false, luaSource ? 0 : 1);
             string existing = Path.Combine(output, "existing.w3x");
             File.WriteAllText(existing, "existing output stays intact");
@@ -161,8 +169,8 @@ namespace Tests
             new WarTransfer.WarTransfer().ExecuteDataTransfer(handler, Args());
             Assert.IsTrue(handler.KillProcess);
             string error = string.Join("\n", handler.Errors);
-            StringAssert.Contains(error, "Lua scripts are not supported");
-            StringAssert.Contains(error, (luaSource ? "source" : "destination") + " map");
+            StringAssert.Contains(error, "Script conversion is not supported");
+            StringAssert.Contains(error, "destination map");
             Assert.IsFalse(log.ToString().Contains("Starting data transfer"), log.ToString());
             Assert.IsFalse(log.ToString().Contains("Copying data to map"), log.ToString());
             CollectionAssert.AreEqual(new[] { existing }, Directory.GetFiles(output));
@@ -171,30 +179,74 @@ namespace Tests
         }
 
         [TestMethod]
-        public void RejectsLuaSourceBeforeOpeningDestinationArchives()
+        public void RejectsUnknownSourceLanguageBeforeOpeningDestinationArchives()
         {
-            PackMap(source, true, 1);
+            PackMap(source, true, 2);
             File.WriteAllText(Path.Combine(targets, "broken.w3x"), "not an archive");
             new WarTransfer.WarTransfer().ExecuteDataTransfer(handler, Args());
             Assert.IsTrue(handler.KillProcess);
             Assert.AreEqual(1, handler.Errors.Count, log.ToString());
-            StringAssert.Contains(handler.Errors[0], "Lua scripts are not supported: source map");
+            StringAssert.Contains(handler.Errors[0], "Unsupported script type 2 in source map");
             Assert.AreEqual(0, Directory.GetFiles(output).Length);
         }
 
         [TestMethod]
-        public void LateScriptFailureLeavesExistingBatchOutputsUntouched()
+        public void StandaloneCliTransfersLuaArchiveAndExtractedScriptExecutesCorrectly()
         {
-            PackMap(source, true);
-            PackMap(Path.Combine(targets, "first 1.0.w3x"), false);
-            PackMap(Path.Combine(targets, "second 1.0.w3x"), false, scriptOverride: "globals\nendglobals\nfunction main takes nothing returns nothing\n");
+            string lua = Environment.GetEnvironmentVariable("WARTRANSFER_TEST_LUA");
+            if (!File.Exists(lua)) Assert.Inconclusive("Set WARTRANSFER_TEST_LUA for the Lua CLI runtime check.");
+            string fixtures = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TestFiles", "Lua");
+            PackMap(source, true, 1, scriptOverride: File.ReadAllText(Path.Combine(fixtures, "Source.lua")));
+            string target = PackMap(Path.Combine(targets, "terrain 1.0.w3x"), false, 1,
+                scriptOverride: File.ReadAllText(Path.Combine(fixtures, "Terrain.lua")));
+            byte[] sourceBefore = File.ReadAllBytes(source), targetBefore = File.ReadAllBytes(target);
+            string cli = typeof(Program).Assembly.Location;
+            string stdout, stderr;
+            Assert.AreEqual(0, RunExecutable(cli, "--source \"" + source + "\" --targets \"" + targets +
+                "\" --output \"" + output + "\" --mpq-editor \"" + editor + "\" --version-regex \"\\d+\\.\\d+\" --json", out stdout, out stderr), stderr);
+            var result = new JavaScriptSerializer().Deserialize<Dictionary<string, object>>(stdout);
+            Assert.AreEqual(true, result["success"]);
+            string extracted = Path.Combine(root, "lua-result");
+            Assert.IsTrue(MPQUtility.MapFileToMapDirectory(handler, Path.Combine(output, "terrain 2.0.w3x"), extracted, editor));
+            Assert.AreEqual(1, W3iUtility.ReadFile(handler, Path.Combine(extracted, "war3map.w3i")).ScriptTypeId);
+            Assert.AreEqual("source custom-data.txt", File.ReadAllText(Path.Combine(extracted, "custom-data.txt")));
+            Assert.AreEqual("terrain war3map.w3r", File.ReadAllText(Path.Combine(extracted, "war3map.w3r")));
+            Assert.IsFalse(File.Exists(Path.Combine(extracted, "war3map.j")));
+            Assert.AreEqual(0, RunExecutable(lua, "\"" + Path.Combine(fixtures, "AssertMerged.lua") + "\" \"" +
+                Path.Combine(extracted, "war3map.lua") + "\" false false false false", out stdout, out stderr), stderr);
+            StringAssert.Contains(stdout, "merged Lua runtime checks passed");
+            CollectionAssert.AreEqual(sourceBefore, File.ReadAllBytes(source));
+            CollectionAssert.AreEqual(targetBefore, File.ReadAllBytes(target));
+        }
+
+        private static int RunExecutable(string path, string arguments, out string stdout, out string stderr)
+        {
+            using (var process = new Process { StartInfo = new ProcessStartInfo(path, arguments) { UseShellExecute = false,
+                CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true } })
+            {
+                process.Start();
+                var outTask = process.StandardOutput.ReadToEndAsync(); var errTask = process.StandardError.ReadToEndAsync();
+                if (!process.WaitForExit(30000)) { process.Kill(); Assert.Fail("Fixture process timed out."); }
+                stdout = outTask.Result; stderr = errTask.Result;
+                return process.ExitCode;
+            }
+        }
+
+        [DataTestMethod]
+        [DataRow(0)] [DataRow(1)]
+        public void LateScriptFailureLeavesExistingBatchOutputsUntouched(int scriptType)
+        {
+            PackMap(source, true, scriptType);
+            PackMap(Path.Combine(targets, "first 1.0.w3x"), false, scriptType);
+            PackMap(Path.Combine(targets, "second 1.0.w3x"), false, scriptType,
+                scriptOverride: scriptType == 0 ? "globals\nendglobals\nfunction main takes nothing returns nothing\n" : "function main(");
             string first = Path.Combine(output, "first 2.0.w3x");
             File.WriteAllText(first, "existing output");
             new WarTransfer.WarTransfer().ExecuteDataTransfer(handler, Args());
             Assert.IsTrue(handler.KillProcess);
             Assert.AreEqual("existing output", File.ReadAllText(first));
             Assert.AreEqual(1, Directory.GetFiles(output).Length);
-            StringAssert.Contains(string.Join("\n", handler.Errors), "endfunction");
+            StringAssert.Contains(string.Join("\n", handler.Errors), scriptType == 0 ? "endfunction" : "Invalid Lua script");
         }
 
         [TestMethod]

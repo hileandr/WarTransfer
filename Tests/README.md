@@ -5,7 +5,7 @@ Build `Tests/Tests.csproj` with Visual Studio MSBuild, then run `Tests.dll` with
 fixtures are resolved relative to that working directory.
 
 ```powershell
-& $msbuild Tests\Tests.csproj /t:Build /p:Configuration=Debug
+& $msbuild Tests\Tests.csproj /restore /t:Build /p:Configuration=Debug
 Push-Location Tests\bin\Debug
 try {
     & $vstest Tests.dll /Logger:trx
@@ -20,9 +20,15 @@ Ladik's `MPQEditor.exe` to enable the integration tests. Without it, those tests
 are reported as inconclusive; the script tests require no archive tool.
 
 `./Tests/Run.ps1 -RequireIntegration` builds and runs the suites, discovers local
-MPQEditor/pjass installations, and fails immediately if either tool is missing.
-`./Tests/Run.ps1 -UnitOnly -Configuration Release` runs the portable unit checks.
-The Windows GitHub Actions workflow runs that explicitly named unit subset;
+MPQEditor/pjass installations and a locally built Lua interpreter, and fails
+immediately if a required tool is missing. Build the interpreter first with
+`./Tests/BuildLua.ps1` (Visual Studio C++ x64 tools required), or set
+`WARTRANSFER_TEST_LUA` to an existing Lua 5.3 executable.
+`./Tests/Run.ps1 -UnitOnly -Configuration Release` runs the unit subset, including
+Lua execution checks when an interpreter is available. Add `-RequireLua` to fail
+if that interpreter is missing.
+The Windows GitHub Actions workflow builds the checksum-pinned official Lua
+5.3.6 source and runs that explicitly named unit subset with `-RequireLua`;
 game/archive integration is a separate local check, not silently counted as CI
 coverage. The workflow configuration has been added; its hosted run still needs
 to execute after these changes are pushed.
@@ -41,27 +47,29 @@ multiline/Unicode WTS data and malformed blocks, missing/colliding references,
 partial publication and cancellation, genuinely unnamed MPQ entries, and W3I
 truncation at every byte boundary. See [performance and remaining validation](PERFORMANCE.md).
 
-The new suites cover:
+The suites cover:
 
 - `JassTransferTests`: gameplay retention, destination configuration and units,
   initialization order and sounds, insertion/removal of generated functions and
   item-drop callbacks, camera/region globals and optional functions, WTS and
   `ExecuteFunc` remapping, and failure without overwriting the output script.
-- `ScriptTypeTests`: JASS selection for legacy and current W3I layouts, Lua
-  rejection for either map role, unknown types, missing/invalid metadata, missing
+- `ScriptTypeTests`: JASS and Lua selection for supported W3I layouts,
+  unknown types, missing/invalid metadata, missing
   scripts, and selection of the active script when both files exist.
 - `TransferWorkflowTests`: real archive transfers to multiple destinations,
   camera/region and random-table switches, metadata and string merging, versioned
   filenames, unchanged input archives, and rejection before merging or replacing
-  existing outputs. A Lua source is rejected before opening destination archives.
+  existing outputs. An unknown source language is rejected before opening
+  destination archives; mixed-language batches fail before any merging. The
+  standalone Lua CLI test executes the extracted output with a Lua interpreter.
 
 The maps constructed by these tests contain synthetic scripts and data markers;
 they test transfer behavior and archive preservation, not Warcraft III gameplay.
 
 # Private real-map acceptance
 
-After building the Debug CLI, run the separate acceptance harness against local
-maps and a directory of previous outputs:
+After building the Debug CLI, run the separate JASS acceptance harness against
+local maps and a directory of previous outputs:
 
 ```powershell
 ./Tests/RealMaps.ps1 -SourceMap 'D:\Maps\Data1.09beta6.w3x' `
@@ -106,11 +114,9 @@ or validate their script languages.
 
 `IMapScriptMerger` owns reading, merging, and writing map scripts. The map workflow
 passes map directories, transfer options through the selected implementation's
-constructor, and WTS tables; it does not use JASS document types. The existing
-implementation lives in `WarTransfer/Scripts/JassScriptMerger.cs`. A future Lua
-implementation can use a different parser behind the same interface and be
-selected in `MapScripts.Open`. Different source/destination languages are rejected
-by the engine; adding another implementation does not enable script conversion.
+constructor, and WTS tables; it does not use language-specific document types.
+`JassScriptMerger` and `LuaScriptMerger` own their respective parsers. Different
+source/destination languages are rejected by the engine before merging.
 
 Camera and region transfer now consistently selects the requested functions and
 globals, and inserts their initialization calls when the terrain lacks those
@@ -118,4 +124,53 @@ calls. Missing, duplicate, or conditional `InitBlizzard()` markers fail explicit
 Random-unit-table selection also selects the matching generated globals and
 initializer. Source-transferred table names keep their source WTS references.
 The parser checks basic structure and literal boundaries; it remains a lightweight
-parser, not a complete JASS compiler/type checker. pjass is currently used by tests.
+JASS parser, not a complete compiler/type checker. pjass is used by tests.
+
+# Lua transfers
+
+`LuaScriptMerger` uses [Loretta 0.2.13](https://github.com/LorettaDevs/Loretta)
+with Lua 5.3 syntax options. The parser dependency is pinned through NuGet and
+restored by MSBuild; no Lua interpreter is needed to run transfers. Map scripts
+are parsed, never executed by the transfer engine. Text edits preserve source
+gameplay, closures, comments, literals, and formatting outside replaced spans.
+
+The supported layout is World Editor style: top-level `function config()` and
+`function main()` declarations, each without parameters, and one top-level,
+unconditional `InitBlizzard()` call in each main. Main initialization before
+that call must be straight-line code, with no local declarations. Destination
+terrain initialization is followed by the source marker and source gameplay
+suffix. Source sound initialization is retained on the source's side of the
+marker. Missing selected initializers are inserted in region/camera/group order
+before placement functions. Placement functions include units, destructables,
+items, player/team configuration, and drop callbacks.
+
+Camera/region functions and globals follow their transfer switches. Random group
+code/globals and item-table callbacks follow the table switches. Placed-unit,
+destructable, and item globals come from the destination; custom globals, sounds,
+triggers, and other gameplay stay with the source. Exact WTS references in
+imported literals are allocated in the output table without rewriting source
+gameplay references or comments. Short and long quoted strings are supported.
+
+Duplicate/assigned/local generated entrypoints, conditional initialization,
+mixed global assignments that cannot be separated, and destination-local or
+missing helper dependencies fail explicitly. This is not a general Lua program
+merger or semantic/type checker. Frameworks that replace or wrap generated
+entrypoints need dedicated fixtures and may require further support. A failed
+merge leaves staged scripts untouched and publishes no batch outputs.
+When source cameras, regions, or random groups are selected, imported terrain
+code must refer to matching globals declared by the source; differing names fail
+instead of generating nil placement dependencies.
+
+`LuaTransferTests` covers merge ownership, WTS collisions, initialization,
+malformed scripts, unsafe scopes, and output preservation. `LuaExecutionTests`
+runs synthetic fixtures through a separate Lua 5.3 interpreter with native stubs
+and asserts the exact initialization/callback sequence for different options.
+`BuildLua.ps1` downloads [official Lua source](https://www.lua.org/ftp/), checks its
+SHA-256, and builds into ignored `TestResults`; it installs nothing system-wide.
+The source fixture includes closures, bitwise operators, integer division, and
+long strings. Game/archive/compiler checks do not open World Editor or Warcraft
+III or take desktop focus.
+
+Real Lua source/destination maps, a known-good result, and isolated in-game
+validation remain needed before claiming production compatibility. The private
+real-map harness currently audits JASS; the 22-map Spellbringers corpus is JASS.

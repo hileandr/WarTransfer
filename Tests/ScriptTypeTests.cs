@@ -52,17 +52,32 @@ namespace Tests
         [DataRow("destination", false)]
         [DataRow("source", true)]
         [DataRow("destination", true)]
-        public void RejectsLuaFromMetadataEvenWithAnInactiveJassScript(string role, bool includeJass)
+        public void SelectsLuaFromMetadataEvenWithAnInactiveJassScript(string role, bool includeJass)
         {
             MapTestFixture.WriteInfo(root, 1);
             File.WriteAllText(Path.Combine(root, "war3map.lua"), "function main() end");
             if (includeJass) File.WriteAllText(Path.Combine(root, "war3map.j"), "inactive JASS");
-            Assert.IsNull(Open(role));
-            Assert.IsTrue(handler.KillProcess);
-            string error = string.Join("\n", handler.Errors);
-            StringAssert.Contains(error, "Lua scripts are not supported");
-            StringAssert.Contains(error, role + " map");
-            StringAssert.Contains(error, root);
+            Assert.AreEqual(MapScriptType.Lua, Open(role).ScriptType);
+            Assert.IsFalse(handler.KillProcess);
+        }
+
+        [TestMethod]
+        public void MissingDeclaredLuaScriptFailsEvenWithInactiveJass()
+        {
+            MapTestFixture.WriteInfo(root, 1);
+            File.WriteAllText(Path.Combine(root, "war3map.j"), "inactive JASS");
+            Assert.IsNull(Open("destination"));
+            StringAssert.Contains(string.Join("\n", handler.Errors), "Missing Lua script (war3map.lua)");
+        }
+
+        [DataTestMethod]
+        [DataRow(28)] [DataRow(31)] [DataRow(32)] [DataRow(33)] [DataRow(39)]
+        public void SelectsLuaForMetadataLayoutsWithLanguageFields(int version)
+        {
+            MapTestFixture.WriteInfo(root, 1, version);
+            File.WriteAllText(Path.Combine(root, "war3map.lua"), "not parsed in language preflight");
+            Assert.AreEqual(MapScriptType.Lua, Open().ScriptType);
+            Assert.IsFalse(handler.KillProcess);
         }
 
         [TestMethod]

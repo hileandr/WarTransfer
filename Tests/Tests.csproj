@@ -53,6 +53,8 @@
     <Compile Include="IniFileTests.cs" />
     <Compile Include="FileTests.cs" />
     <Compile Include="JassTransferTests.cs" />
+    <Compile Include="LuaTransferTests.cs" />
+    <Compile Include="LuaExecutionTests.cs" />
     <Compile Include="JassParsingTests.cs" />
     <Compile Include="WtsTests.cs" />
     <Compile Include="PublishingTests.cs" />
@@ -95,6 +97,9 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <Content Include="TestFiles\Lua\*.lua">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Include="TestFiles\testIni.txt" />
     <Content Include="TestFiles\triggerdata.txt" />
   </ItemGroup>

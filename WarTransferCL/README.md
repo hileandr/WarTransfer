@@ -1,8 +1,11 @@
 ﻿# WarTransferCL
 
 Noninteractive Windows command-line interface to the shared WarTransfer engine.
-Requires .NET Framework 4.7.2 and Ladik's `MPQEditor.exe`. Supports JASS maps,
-including Warcraft III 3.0 map information. Does not read GUI settings or prompt.
+Requires .NET Framework 4.7.2 and Ladik's `MPQEditor.exe`. Supports JASS-to-JASS
+and World Editor style Lua-to-Lua transfers, including Warcraft III 3.0 map
+information. Does not read GUI settings or prompt. Script language comes from map
+metadata; no language switch is needed. Mixed-language transfers are rejected.
+See [Lua scope and tests](../Tests/README.md#lua-transfers) before using Lua maps.
 
 ## Agent quick start
 

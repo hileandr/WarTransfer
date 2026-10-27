@@ -112,8 +112,8 @@ spells, combat, long-running play, and multiplayer have not been checked.
 
 # Validation that needs your maps or environment
 
-- Lua source/destination maps and an intended merged result for the future Lua
-  implementation. The supplied real-map corpus exercises JASS transfers.
+- Lua source/destination maps and an intended merged result for acceptance of the
+  initial Lua implementation. The supplied real-map corpus exercises JASS transfers.
 - Storage characteristics (local SSD, HDD, network, synced) for a controlled
   performance comparison; the real-map measurements above have no old-version
   baseline.

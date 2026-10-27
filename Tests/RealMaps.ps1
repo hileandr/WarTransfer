@@ -86,6 +86,7 @@ function ReadMap([string]$Directory) {
     $log = [IO.StringWriter]::new()
     $handler = [WarTransferCL.CommandLineErrorHandler]::new($log,$true)
     $info = [WarTransfer.W3iUtility]::ReadFile($handler,(Join-Path $Directory 'war3map.w3i'))
+    if ($info -and $info.FormatVersion -ge 28 -and $info.ScriptTypeId -ne 0) { throw 'RealMaps.ps1 currently audits JASS maps only; Lua acceptance needs a separate real-map corpus.' }
     $strings = [WarTransfer.WtsUtility]::ReadFile($handler,(Join-Path $Directory 'war3map.wts'))
     $script = [WarTransfer.JUtility]::ReadFile($handler,(Join-Path $Directory 'war3map.j'))
     if ($handler.KillProcess) { throw $log.ToString() }

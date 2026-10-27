@@ -1,6 +1,7 @@
 param(
     [ValidateSet('Debug','Release')][string]$Configuration = 'Debug',
     [switch]$UnitOnly,
+    [switch]$RequireLua,
     [switch]$RequireIntegration
 )
 $ErrorActionPreference = 'Stop'
@@ -19,6 +20,13 @@ if (!$env:WARTRANSFER_TEST_PJASS) {
     $path = "${env:ProgramFiles(x86)}\Warcraft III\_retail_\x86_64\JassHelper\pjass.exe"
     if (Test-Path -LiteralPath $path) { $env:WARTRANSFER_TEST_PJASS = $path }
 }
+if (!$env:WARTRANSFER_TEST_LUA) {
+    $path = Join-Path $repo 'TestResults\lua53\lua.exe'
+    if (Test-Path -LiteralPath $path) { $env:WARTRANSFER_TEST_LUA = $path }
+}
+if (($RequireIntegration -or $RequireLua) -and ![IO.File]::Exists($env:WARTRANSFER_TEST_LUA)) {
+    throw 'Lua execution checks require WARTRANSFER_TEST_LUA. Run Tests/BuildLua.ps1 or supply a Lua 5.3 interpreter.'
+}
 if ($RequireIntegration -and (![IO.File]::Exists($env:WARTRANSFER_TEST_MPQ_EDITOR) -or ![IO.File]::Exists($env:WARTRANSFER_TEST_PJASS))) {
     throw 'Integration checks require WARTRANSFER_TEST_MPQ_EDITOR and WARTRANSFER_TEST_PJASS.'
 }
@@ -27,7 +35,7 @@ $env:TMP = $env:TEMP
 New-Item -ItemType Directory -Path $env:TEMP -Force | Out-Null
 Push-Location $repo
 try {
-    & $msbuild Tests\Tests.csproj /t:Build "/p:Configuration=$Configuration" /v:minimal /nologo
+    & $msbuild Tests\Tests.csproj /restore /t:Build "/p:Configuration=$Configuration" /v:minimal /nologo
     if ($LASTEXITCODE -ne 0) { throw 'Test build failed.' }
     Set-Location "Tests\bin\$Configuration"
     $arguments = @('Tests.dll', '/Logger:trx', '/Logger:console;verbosity=minimal', "/ResultsDirectory:$repo\TestResults")

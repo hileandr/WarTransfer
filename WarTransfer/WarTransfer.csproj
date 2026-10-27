@@ -31,6 +31,9 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="Loretta.CodeAnalysis.Lua" Version="0.2.13" />
+  </ItemGroup>
+  <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
@@ -48,6 +51,8 @@
     <Compile Include="WarTransferArgs.cs" />
     <Compile Include="Scripts\IMapScriptMerger.cs" />
     <Compile Include="Scripts\JassScriptMerger.cs" />
+    <Compile Include="Scripts\LuaDocument.cs" />
+    <Compile Include="Scripts\LuaScriptMerger.cs" />
     <Compile Include="Scripts\MapScripts.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Types\FourCC.cs" />

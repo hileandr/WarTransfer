@@ -34,9 +34,13 @@ namespace WarTransfer.Scripts
                     }
                     return new JassScriptMerger(args);
                 case MapScriptType.Lua:
-                    handler.ReportError("Lua scripts are not supported: " + description +
-                        " declares Lua in war3map.w3i. Only JASS-to-JASS transfers are currently supported.", true);
-                    return null;
+                    if (!File.Exists(Path.Combine(mapDirectory, "war3map.lua")))
+                    {
+                        handler.ReportError("Missing Lua script (war3map.lua) in " + description +
+                            ". The map metadata declares Lua.", true);
+                        return null;
+                    }
+                    return new LuaScriptMerger(args);
                 default:
                     handler.ReportError("Unsupported script type " + info.ScriptTypeId + " in " + description +
                         " (war3map.w3i).", true);

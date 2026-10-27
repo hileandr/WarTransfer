@@ -12,7 +12,9 @@ jobs:
       - uses: NuGet/setup-nuget@v2
       - run: nuget restore Tests/packages.config -PackagesDirectory packages -NonInteractive
       - shell: powershell
-        run: ./Tests/Run.ps1 -UnitOnly -Configuration Release
+        run: ./Tests/BuildLua.ps1
+      - shell: powershell
+        run: ./Tests/Run.ps1 -UnitOnly -RequireLua -Configuration Release
       - uses: actions/upload-artifact@v4
         if: always()
         with:

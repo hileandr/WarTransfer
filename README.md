@@ -1,10 +1,14 @@
 WarTransfer is a tool for Warcraft III modders that automates map data transfers from a source map file to any number of other map files.
 I created it for my altered melee mod Spellbringers, since I wanted to transfer all my data to many different terrains.
 
-Currently only supports JASS maps.
+Supports JASS-to-JASS transfers and initial Lua-to-Lua support for World Editor
+generated scripts. JASS/Lua conversion is not supported.
 Source script language is checked after extraction, before destination archives
-are opened. Every destination is checked before any map is merged. Lua maps,
-unknown script types, and missing scripts fail with an explicit error.
+are opened. Every destination is checked before any map is merged. Mixed
+languages, unknown script types, and missing scripts fail with an explicit error.
+Lua merging uses a Lua 5.3 parser; unsupported entrypoint layouts fail explicitly.
+Synthetic Lua scripts pass interpreter and archive/CLI tests; acceptance with
+real Lua maps and in-game validation remains outstanding.
 See [script transfer development and tests](Tests/README.md) for the language
 boundary and regression coverage.
 
