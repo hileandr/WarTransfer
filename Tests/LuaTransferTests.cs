@@ -237,6 +237,63 @@ namespace Tests
             StringAssert.Contains(string.Join("\n", handler.Errors), "destination-local declarations");
         }
 
+        [TestMethod]
+        public void AllowsEditorWeatherLocalsUsedOnlyBeforeInitialization()
+        {
+            string result = Merge(Script(prefix: "local we\nwe = AddWeatherEffect(Rect(0, 0, 1, 1), FourCC('WOlw'))\nEnableWeatherEffect(we, true)"),
+                Script(prefix: "local we\nwe = AddWeatherEffect(Rect(0, 0, 2, 2), FourCC('RAlr'))\nEnableWeatherEffect(we, true)"));
+            string main = LuaDocument.Parse(result).FunctionText("main");
+            StringAssert.Contains(main, "local we");
+            StringAssert.Contains(main, "FourCC('RAlr')");
+            Assert.IsFalse(main.Contains("FourCC('WOlw')"));
+            StringAssert.Contains(main, "EnableWeatherEffect(we, true)");
+        }
+
+        [DataTestMethod]
+        [DataRow("local state = 42\nDisplay(state)")]
+        [DataRow("local f = function(state) return state end\nf(42)")]
+        [DataRow("local f = function() local state = 42; return state end\nf()")]
+        public void AllowsRetainedLocalsThatShadowDiscardedLocals(string suffix)
+        {
+            string result = Merge(Script(prefix: "local state = 1", suffix: suffix), Script(prefix: "local state = 999\nDisplay(state)"));
+            string main = LuaDocument.Parse(result).FunctionText("main");
+            foreach (string line in suffix.Split('\n')) StringAssert.Contains(main, line);
+        }
+
+        [DataTestMethod]
+        [DataRow("state = 2")]
+        [DataRow("local f = function() return state end\nf()")]
+        [DataRow("local state = state + 1")]
+        public void RejectsEscapingSourceLocalBindingsIncludingWritesAndClosures(string suffix)
+        {
+            Assert.IsNull(Merge(Script(prefix: "local state = 1", suffix: suffix), Script(), success: false));
+            StringAssert.Contains(string.Join("\n", handler.Errors), "source-local declarations used after");
+        }
+
+        [TestMethod]
+        public void AllowsMemberNamesThatDoNotReadTheDestinationLocal()
+        {
+            string result = Merge(Script(globals: "obj = { state = 7 }", suffix: "Display(obj.state)"), Script(prefix: "local state = 999"));
+            StringAssert.Contains(result, "Display(obj.state)");
+        }
+
+        [TestMethod]
+        public void RejectsDestinationLocalShadowingAnOuterSourceLocal()
+        {
+            Assert.IsNull(Merge(Script(globals: "local state = 7", suffix: "Display(state)"), Script(prefix: "local state = 999"), success: false));
+            StringAssert.Contains(string.Join("\n", handler.Errors), "destination-local declarations shadowing");
+        }
+
+        [DataTestMethod]
+        [DataRow(false)] [DataRow(true)]
+        public void RejectsLocalEnvironmentsChangingImplicitGlobalBindings(bool sourceEnvironment)
+        {
+            string prefix = "local _ENV = {}";
+            Assert.IsNull(Merge(Script(prefix: sourceEnvironment ? prefix : ""),
+                Script(prefix: sourceEnvironment ? "" : prefix), success: false));
+            StringAssert.Contains(string.Join("\n", handler.Errors), "changing _ENV");
+        }
+
         [DataTestMethod]
         [DataRow("OldHelper()")]
         [DataRow("RegisterDrop(OldHelper)")]

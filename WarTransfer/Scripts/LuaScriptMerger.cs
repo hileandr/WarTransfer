@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Text;
 using Loretta.CodeAnalysis;
+using Loretta.CodeAnalysis.Lua;
 using Loretta.CodeAnalysis.Lua.Syntax;
 using WarTransfer.FileTypes;
 
@@ -148,15 +150,13 @@ namespace WarTransfer.Scripts
             int sourceMarker = LuaDocument.InitializationMarker(original);
             int terrainMarker = LuaDocument.InitializationMarker(target);
             var originalPrefix = original.Body.Statements.Take(sourceMarker).ToArray();
-            if (originalPrefix.Any(s => s is LocalVariableDeclarationStatementSyntax || s is LocalFunctionDeclarationStatementSyntax))
-                throw new FormatException("Cannot merge Lua main with source-local declarations before InitBlizzard().");
 
             var optional = new[] { "InitSounds", "CreateRegions", "CreateCameras", "InitRandomGroups" };
             var prefix = target.Body.Statements.Take(terrainMarker).ToArray();
-            if (prefix.Any(s => s is LocalVariableDeclarationStatementSyntax || s is LocalFunctionDeclarationStatementSyntax))
-                throw new FormatException("Cannot merge Lua main with destination-local declarations before InitBlizzard().");
+            ValidateMainLocals(source, original, sourceMarker, originalPrefix, prefix);
             foreach (var statement in originalPrefix.Concat(prefix))
-                if (!(statement is ExpressionStatementSyntax) && !(statement is AssignmentStatementSyntax) && !(statement is EmptyStatementSyntax))
+                if (!(statement is ExpressionStatementSyntax) && !(statement is AssignmentStatementSyntax) &&
+                    !(statement is EmptyStatementSyntax) && !(statement is LocalVariableDeclarationStatementSyntax))
                     throw new FormatException("Cannot merge Lua main: initialization before InitBlizzard() must be straight-line editor-generated code.");
             foreach (var statement in prefix)
                 foreach (var call in statement.DescendantNodes().OfType<FunctionCallExpressionSyntax>())
@@ -196,6 +196,35 @@ namespace WarTransfer.Scripts
             foreach (var statement in original.Body.Statements.Skip(sourceMarker + 1)) body.AppendLine(statement.ToFullString());
             body.Append("end");
             return body.ToString();
+        }
+
+        private static void ValidateMainLocals(LuaDocument source, FunctionDeclarationStatementSyntax main, int marker,
+            StatementSyntax[] sourcePrefix, StatementSyntax[] terrainPrefix)
+        {
+            if (sourcePrefix.OfType<LocalVariableDeclarationStatementSyntax>().SelectMany(declaration => declaration.Names).Any(name => name.ToString() == "_ENV"))
+                throw new FormatException("Cannot merge Lua main with source-local declarations changing _ENV across InitBlizzard().");
+            var terrainLocals = new HashSet<string>(terrainPrefix.OfType<LocalVariableDeclarationStatementSyntax>()
+                .SelectMany(declaration => declaration.Names).Select(name => name.ToString()), StringComparer.Ordinal);
+            if (terrainLocals.Contains("_ENV"))
+                throw new FormatException("Cannot merge Lua main with destination-local declarations changing _ENV across InitBlizzard().");
+            if (terrainLocals.Count == 0 && !sourcePrefix.Any(statement => statement is LocalVariableDeclarationStatementSyntax)) return;
+
+            // Resolve actual bindings, so nested locals, parameters and member names
+            // are not confused with locals crossing the initialization boundary.
+            var bindings = new Script(ImmutableArray.Create<SyntaxTree>(source.Root.SyntaxTree));
+            int retainedStart = main.Body.Statements[marker].Span.Start;
+            foreach (var identifier in main.Body.Statements.Skip(marker).SelectMany(statement => statement.DescendantNodesAndSelf()).OfType<IdentifierNameSyntax>())
+            {
+                var variable = bindings.GetVariable(identifier);
+                if (variable == null) continue;
+                var declaration = variable.Declaration;
+                bool declaredInMain = declaration != null && main.Body.Span.Contains(declaration.Span);
+                if (declaredInMain && declaration.Span.Start < retainedStart)
+                    throw new FormatException("Cannot merge Lua main with source-local declarations used after InitBlizzard(): '" + variable.Name + "'.");
+                bool declaredInRetainedCode = declaredInMain && declaration.Span.Start >= retainedStart;
+                if (terrainLocals.Contains(variable.Name) && !declaredInRetainedCode)
+                    throw new FormatException("Cannot merge Lua main with destination-local declarations shadowing retained source references: '" + variable.Name + "'.");
+            }
         }
 
         private static int InitializationRank(string name)

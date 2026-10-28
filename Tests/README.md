@@ -137,7 +137,11 @@ gameplay, closures, comments, literals, and formatting outside replaced spans.
 The supported layout is World Editor style: top-level `function config()` and
 `function main()` declarations, each without parameters, and one top-level,
 unconditional `InitBlizzard()` call in each main. Main initialization before
-that call must be straight-line code, with no local declarations. Destination
+that call must be straight-line code. Weather locals such as `local we` are
+supported: discarded source locals must not be referenced by retained source
+code, and retained destination locals must not shadow its bindings. Scope checks
+distinguish inner locals, parameters, and member names. Local `_ENV` overrides
+across the boundary are rejected. Destination
 terrain initialization is followed by the source marker and source gameplay
 suffix. Source sound initialization is retained on the source's side of the
 marker. Missing selected initializers are inserted in region/camera/group order
@@ -171,6 +175,21 @@ The source fixture includes closures, bitwise operators, integer division, and
 long strings. Game/archive/compiler checks do not open World Editor or Warcraft
 III or take desktop focus.
 
-Real Lua source/destination maps, a known-good result, and isolated in-game
-validation remain needed before claiming production compatibility. The private
-real-map harness currently audits JASS; the 22-map Spellbringers corpus is JASS.
+Additional real Lua fixtures and isolated in-game validation remain useful before
+claiming production compatibility. A known-good result is useful when available,
+but input/output invariants can validate a first transfer. `RealMaps.ps1` audits
+JASS; the 22-map Spellbringers corpus is JASS.
+
+The first real Lua source exposed the editor-generated weather local and now
+passes scope checks. Real acceptance also transferred that format-33, two-player
+source to a different, Lua-saved Turtle Rock destination (format 39, four players).
+The independent private audit checked all 312 output content entries against
+source assets and destination terrain, exact source gameplay function bodies and
+globals, destination generated functions and globals, main initialization on
+both sides of `InitBlizzard()`, resolved metadata, gameplay strings, and complete
+string references. Source, destination, and output pass the standalone Lua 5.3
+syntax check without executing map code. Both original archives are unchanged.
+The output retains four players and destination camera/region files. Those files
+are empty in this pair, so nonempty camera/region behavior still relies on the
+synthetic fixtures. No in-game Lua behavior has been validated. Private artifacts
+and the audit script remain under ignored `TestResults/rl-58f65e41/`.

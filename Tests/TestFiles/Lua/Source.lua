@@ -37,7 +37,10 @@ function config()
 end
 
 function main()
+    local we
     SetBounds('source bounds')
+    we = AddWeatherEffect(Rect(-16, -16, 16, 16), FourCC('WOlw'))
+    EnableWeatherEffect(we, true)
     InitSounds()
     CreateRegions()
     CreateCameras()

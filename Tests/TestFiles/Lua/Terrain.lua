@@ -29,7 +29,10 @@ function config()
 end
 
 function main()
+    local we
     SetBounds('terrain bounds')
+    we = AddWeatherEffect(Rect(-32, -32, 32, 32), FourCC('RAlr'))
+    EnableWeatherEffect(we, true)
     InitSounds()
     CreateRegions()
     CreateCameras()

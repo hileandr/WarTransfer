@@ -6,11 +6,16 @@ function SetPlayers(value) Players = value end
 function SetBounds(value) Record(value) end
 function RegisterDrop(value) assert(type(value) == 'function'); value() end
 function InitBlizzard() Record('blizzard') end
+function Rect(...) return { ... } end
+function FourCC(value) return value end
+function AddWeatherEffect(bounds, kind) return { bounds = bounds, kind = kind } end
+function EnableWeatherEffect(effect, enabled) assert(enabled); Weather = effect.kind end
 
 assert(loadfile(arg[1]))()
 config()
 main()
 assert(Players == 4, 'wrong player configuration')
+assert(Weather == 'RAlr', 'destination weather local was not preserved')
 assert(udg_Gameplay == 73, 'destination gameplay globals leaked')
 assert(gg_unit_Terrain and not gg_unit_Source, 'placed unit globals not selected together')
 assert(ObsoleteGameplay == nil, 'destination gameplay leaked')

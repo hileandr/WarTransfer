@@ -45,6 +45,11 @@ The benchmark has no timing assertions in the test suite.
 
 # Next performance opportunities
 
+The [MPQ library investigation](MPQ-LIBRARIES.md) compares WarCode's managed
+backend, War3Net, and direct StormLib access on two private real maps. It records
+operation timings, runtime constraints, compatibility findings, and a proposed
+integration path. These are not end-to-end transfer speedup measurements.
+
 1. **Read/write archive entries through an in-process backend.** A backend such as
    [StormLib](https://github.com/ladislav-zezula/StormLib) could keep archives open,
    read terrain entries directly, overlay changed entries, and verify by streaming
@@ -112,8 +117,14 @@ spells, combat, long-running play, and multiplayer have not been checked.
 
 # Validation that needs your maps or environment
 
-- Lua source/destination maps and an intended merged result for acceptance of the
-  initial Lua implementation. The supplied real-map corpus exercises JASS transfers.
+- Additional Lua maps, especially nonempty cameras/regions and scripts using
+  frameworks or wrapped entrypoints. The first real Lua transfer now passes
+  input/output invariants: a format-33, two-player source merged into Lua-saved
+  Turtle Rock (format 39, four players). The Release CLI took 6.722 seconds for
+  this single run, including output verification; this is not a repeated benchmark.
+  All 312 output content entries, script ownership, metadata, WTS references,
+  and independent Lua syntax checks passed. There is no known-good output or
+  in-game validation for this pair. Details are in [the test notes](README.md#lua-transfers).
 - Storage characteristics (local SSD, HDD, network, synced) for a controlled
   performance comparison; the real-map measurements above have no old-version
   baseline.
